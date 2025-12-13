@@ -2,6 +2,10 @@
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzHvvOQPnKd4ZJyk01dzooJEYKQ4c6-4OpVhRiWVk80XvsBV0r9IhXVNF2O0CeLmuPm/exec";
 const APP_TOKEN = "9fA2xQe7MZk4T8Rj3P0LwB1YhD5C6mSNaVUp";
 
+// ================= CONFIG =================
+const APPS_SCRIPT_URL = "PEGA_AQUI_TU_URL_DEL_WEB_APP"; // .../exec
+const APP_TOKEN = "TU_TOKEN_LARGO_Y_SEGURO";
+
 const PER_QUESTION_SEC = 90;
 
 // Seguridad
@@ -155,12 +159,14 @@ function openModal(htmlBody, onConfirm) {
 function rulesHtml(totalTimeStr) {
   return `
     <div>
-      Esta evaluación tiene una duración máxima de <b>${totalTimeStr}</b>. Una vez iniciada, no es posible reiniciarla.
+      Esta evaluación tiene una duración máxima de <b>${totalTimeStr}</b> y debe realizarse en una sola sesión continua.
       <ul>
-        <li>Realízala en un espacio estable y con disponibilidad completa de tiempo.</li>
+        <li>Una vez iniciada, la evaluación no puede reiniciarse.</li>
+        <li>Es importante disponer del tiempo completo antes de comenzar.</li>
         <li>Evita recargar la página o cerrar la ventana durante la evaluación.</li>
         <li>Para preservar la integridad del proceso, una interrupción de la sesión puede invalidar la evaluación.</li>
       </ul>
+      Al continuar, confirmas que comprendes estas condiciones y deseas iniciar la evaluación.
     </div>
   `;
 }
@@ -365,7 +371,10 @@ async function submitAnswers(isAuto=false, autoReason="") {
 
   stopTimer();
   localStorage.removeItem(LS_DRAFT_KEY(candidate.cedula));
-  if ($("submitMsg")) $("submitMsg").innerHTML = `<span class="ok">Evaluación enviada correctamente.</span>`;
+
+  if ($("submitMsg")) {
+    $("submitMsg").innerHTML = `<span class="ok">Tus respuestas fueron registradas correctamente. LabCore Tech revisará la información.</span>`;
+  }
 }
 
 async function autoSubmit(reason) {
@@ -413,7 +422,6 @@ async function beginExamFlow() {
       return;
     }
 
-    // restore draft if any
     const draft = loadDraftIfAny();
     if (draft && Array.isArray(draft.answers)) {
       draft.answers.forEach(a => { if (a?.id) exam.answersMap[a.id] = a.answer || ""; });
