@@ -13,6 +13,42 @@ const LS_PREFIX = "labcore_eval";
 const LS_LOCK_KEY = (ced) => `${LS_PREFIX}:lock:${ced}`;
 const LS_DRAFT_KEY = (ced) => `${LS_PREFIX}:draft:${ced}`;
 
+// ================= HELPERS =================
+const $ = (id) => document.getElementById(id);
+
+function showDebug(msg) {
+  const box = $("debugBox");
+  if (!box) return;
+  box.textContent = msg;
+  box.classList.remove("hidden");
+}
+
+function clearDebug() {
+  const box = $("debugBox");
+  if (!box) return;
+  box.textContent = "";
+  box.classList.add("hidden");
+}
+
+function mmss(sec) {
+  sec = Math.max(0, Math.floor(sec));
+  const mm = Math.floor(sec / 60);
+  const ss = sec % 60;
+  return `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+}
+
+function safeJsonParse(text, fallback) {
+  try { return JSON.parse(text); } catch { return fallback; }
+}
+
+async function safe(fn) {
+  try { await fn(); }
+  catch (e) {
+    showDebug(String(e?.message || e));
+    console.error(e);
+  }
+}
+
 // ================= STATE =================
 let exam = null;
 let startedAt = null;
@@ -36,27 +72,15 @@ const incidents = {
   events: []
 };
 
-// ================= HELPERS =================
-const $ = (id) => document.getElementById(id);
-
-function mmss(sec) {
-  sec = Math.max(0, Math.floor(sec));
-  const mm = Math.floor(sec / 60);
-  const ss = sec % 60;
-  return `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
-}
-
 function addIncident(type, detail) {
   incidents.total++;
   incidents.events.push({ type, detail, at: new Date().toISOString() });
   if (incidents.events.length > 80) incidents.events.shift();
 }
 
-function safeJsonParse(text, fallback) {
-  try { return JSON.parse(text); } catch { return fallback; }
-}
-
+// ================= VALIDATION =================
 function validateCandidate() {
+  if (!$("firstName") || !$("lastName") || !$("cedula") || !$("area")) return "HTML incompleto (faltan campos).";
   if ($("firstName").value.trim().length < 2) return "Nombre inválido.";
   if ($("lastName").value.trim().length < 2) return "Apellido inválido.";
   if ($("cedula").value.trim().length < 5) return "Cédula inválida.";
@@ -85,93 +109,81 @@ async function apiGet(mode, area) {
   return d;
 }
 
-// ================= META (TIEMPO POR ÁREA) =================
+// ================= META TIME =================
 async function showTimeForArea(area) {
   const msg = $("startMsg");
   if (!msg) return;
 
-  if (!area) {
-    msg.textContent = "";
+  msg.textContent = "";
+  if (!area) return;
+
+  const meta = await apiGet("meta", area);
+  const totalSec = (meta.questionCount || 0) * PER_QUESTION_SEC;
+
+  if (!meta.questionCount) {
+    msg.innerHTML = `<span class="bad">Área sin preguntas configuradas.</span>`;
     return;
   }
-
-  try {
-    const meta = await apiGet("meta", area);
-    const totalSec = (meta.questionCount || 0) * PER_QUESTION_SEC;
-
-    if (!meta.questionCount) {
-      msg.innerHTML = `<span class="bad">Área sin preguntas configuradas.</span>`;
-      return;
-    }
-
-    msg.innerHTML = `<span class="hint">Tiempo disponible: <b>${mmss(totalSec)}</b></span>`;
-  } catch (e) {
-    msg.innerHTML = `<span class="bad">${e.message}</span>`;
-  }
+  msg.innerHTML = `<span class="hint">Tiempo disponible: <b>${mmss(totalSec)}</b></span>`;
 }
 
-// ================= UI: MODAL =================
+// ================= MODAL =================
 function openModal(htmlBody, onConfirm) {
+  if (!$("startModal") || !$("modalBody") || !$("acceptRules") || !$("confirmStartBtn") || !$("cancelStartBtn")) {
+    throw new Error("HTML incompleto: falta el modal o sus elementos.");
+  }
+
   $("modalBody").innerHTML = htmlBody;
   $("startModal").classList.remove("hidden");
   $("acceptRules").checked = false;
   $("confirmStartBtn").disabled = true;
 
-  const accept = () => {
-    $("startModal").classList.add("hidden");
-    onConfirm();
-  };
-
-  const cancel = () => {
-    $("startModal").classList.add("hidden");
-  };
-
-  const onCheck = () => {
+  $("acceptRules").onchange = () => {
     $("confirmStartBtn").disabled = !$("acceptRules").checked;
   };
 
-  // Bind once per open
-  $("acceptRules").onchange = onCheck;
-  $("confirmStartBtn").onclick = accept;
-  $("cancelStartBtn").onclick = cancel;
+  $("cancelStartBtn").onclick = () => {
+    $("startModal").classList.add("hidden");
+  };
+
+  $("confirmStartBtn").onclick = () => {
+    $("startModal").classList.add("hidden");
+    onConfirm();
+  };
 }
 
-function buildCorporateRulesHtml(totalTimeStr) {
+function rulesHtml(totalTimeStr) {
   return `
     <div>
       Esta evaluación tiene una duración máxima de <b>${totalTimeStr}</b>. Una vez iniciada, no es posible reiniciarla.
       <ul>
-        <li>Procura realizarla en un espacio estable, con el tiempo disponible completo.</li>
+        <li>Realízala en un espacio estable y con disponibilidad completa de tiempo.</li>
         <li>Evita recargar la página o cerrar la ventana durante la evaluación.</li>
-        <li>Por integridad del proceso, si se interrumpe la sesión (salida de la página o pérdida de continuidad), la evaluación puede quedar invalidada.</li>
+        <li>Para preservar la integridad del proceso, una interrupción de la sesión puede invalidar la evaluación.</li>
       </ul>
     </div>
   `;
 }
 
-// ================= BLOQUEO POR CÉDULA (EN ESTE NAVEGADOR) =================
+// ================= LOCK & DRAFT =================
 function isLocked(cedula) {
   return localStorage.getItem(LS_LOCK_KEY(cedula)) === "1";
 }
 function lockCandidate(cedula, snapshot) {
   localStorage.setItem(LS_LOCK_KEY(cedula), "1");
-  // Guarda también un snapshot simple (para audit interno)
   localStorage.setItem(`${LS_PREFIX}:who:${cedula}`, JSON.stringify(snapshot));
 }
 
-// ================= AUTOSAVE DRAFT =================
 function saveDraft() {
   if (!candidate || !exam) return;
-  const answers = collectAnswersSoft();
   const payload = {
     candidate,
     currentIndex,
-    answers,
+    answers: collectAnswersSoft(),
     savedAtISO: new Date().toISOString()
   };
   localStorage.setItem(LS_DRAFT_KEY(candidate.cedula), JSON.stringify(payload));
 }
-
 function loadDraftIfAny() {
   if (!candidate) return null;
   const raw = localStorage.getItem(LS_DRAFT_KEY(candidate.cedula));
@@ -179,21 +191,19 @@ function loadDraftIfAny() {
   return safeJsonParse(raw, null);
 }
 
-// ================= RENDER UNA PREGUNTA =================
+// ================= RENDER ONE QUESTION =================
 function renderQuestionAt(index) {
   currentIndex = index;
-
-  const q = exam.questions[currentIndex];
-  const box = $("questionBox");
   const n = exam.questions.length;
+  const q = exam.questions[currentIndex];
 
-  $("progress").textContent = `Pregunta ${currentIndex + 1} de ${n}`;
+  if ($("progress")) $("progress").textContent = `Pregunta ${currentIndex + 1} de ${n}`;
+  if ($("prevBtn")) $("prevBtn").disabled = currentIndex === 0;
+  if ($("nextBtn")) $("nextBtn").disabled = currentIndex === n - 1;
 
-  // Botones
-  $("prevBtn").disabled = currentIndex === 0;
-  $("nextBtn").disabled = currentIndex === n - 1;
+  const box = $("questionBox");
+  if (!box) throw new Error("HTML incompleto: falta #questionBox.");
 
-  // Traer respuesta previa si existe
   const existing = (exam.answersMap[q.id] || "");
 
   box.innerHTML = `
@@ -206,7 +216,6 @@ function renderQuestionAt(index) {
 
   const ta = $("answerBox");
   ta.value = existing;
-
   ta.addEventListener("input", () => {
     exam.answersMap[q.id] = ta.value;
     saveDraft();
@@ -214,7 +223,6 @@ function renderQuestionAt(index) {
 }
 
 function collectAnswersSoft() {
-  if (!exam) return [];
   return exam.questions.map(q => ({
     id: q.id,
     module: q.moduleName,
@@ -224,17 +232,15 @@ function collectAnswersSoft() {
   }));
 }
 
-function validateAllAnswered() {
-  const answers = collectAnswersSoft();
-  const missing = answers.filter(a => !a.answer);
-  return missing.length === 0;
+function allAnswered() {
+  return collectAnswersSoft().every(a => !!a.answer);
 }
 
 // ================= TIMER =================
 function startTimer() {
   timerInt = setInterval(() => {
     const remaining = Math.floor((deadlineAt - Date.now()) / 1000);
-    $("timer").textContent = mmss(remaining);
+    if ($("timer")) $("timer").textContent = mmss(remaining);
 
     if (remaining <= 0) {
       stopTimer();
@@ -242,13 +248,12 @@ function startTimer() {
     }
   }, 250);
 }
-
 function stopTimer() {
   if (timerInt) clearInterval(timerInt);
   timerInt = null;
 }
 
-// ================= SECURITY (NO UI) =================
+// ================= SECURITY =================
 function setupSecurityOnce() {
   if (securityWired) return;
   securityWired = true;
@@ -278,19 +283,15 @@ function setupSecurityOnce() {
       addIncident("cut_blocked", "cut");
     });
 
-    document.addEventListener(
-      "keydown",
-      (e) => {
-        const key = (e.key || "").toLowerCase();
-        const ctrl = e.ctrlKey || e.metaKey;
-        if (ctrl && ["c", "v", "x", "a"].includes(key)) {
-          e.preventDefault();
-          incidents.keyBlocked++;
-          addIncident("key_blocked", `ctrl+${key}`);
-        }
-      },
-      true
-    );
+    document.addEventListener("keydown", (e) => {
+      const key = (e.key || "").toLowerCase();
+      const ctrl = e.ctrlKey || e.metaKey;
+      if (ctrl && ["c","v","x","a"].includes(key)) {
+        e.preventDefault();
+        incidents.keyBlocked++;
+        addIncident("key_blocked", `ctrl+${key}`);
+      }
+    }, true);
 
     document.addEventListener("selectstart", (e) => {
       e.preventDefault();
@@ -315,7 +316,6 @@ function setupSecurityOnce() {
     addIncident("window_blur", `blur (${incidents.blurCount})`);
   });
 
-  // Evita recarga accidental (best-effort)
   window.addEventListener("beforeunload", (e) => {
     if (!exam) return;
     addIncident("beforeunload", "attempted_leave");
@@ -325,25 +325,17 @@ function setupSecurityOnce() {
 }
 
 // ================= SUBMIT =================
-async function submitAnswers(isAuto = false, autoReason = "") {
+async function submitAnswers(isAuto=false, autoReason="") {
   if (!exam || !candidate) return;
 
-  if (!isAuto) {
-    if (!validateAllAnswered()) {
-      $("submitMsg").innerHTML = `<span class="bad">Faltan respuestas.</span>`;
-      return;
-    }
+  if (!isAuto && !allAnswered()) {
+    if ($("submitMsg")) $("submitMsg").innerHTML = `<span class="bad">Faltan respuestas.</span>`;
+    return;
   }
 
   const payload = {
     token: APP_TOKEN,
-    candidate: {
-      fullName: candidate.fullName,
-      firstName: candidate.firstName,
-      lastName: candidate.lastName,
-      cedula: candidate.cedula,
-      area: candidate.area
-    },
+    candidate,
     meta: {
       startedAtISO: startedAt ? new Date(startedAt).toISOString() : null,
       submittedAtISO: new Date().toISOString(),
@@ -356,75 +348,60 @@ async function submitAnswers(isAuto = false, autoReason = "") {
     answers: collectAnswersSoft()
   };
 
-  $("submitBtn").disabled = true;
-  $("startBtn").disabled = true;
+  if ($("submitBtn")) $("submitBtn").disabled = true;
+  if ($("startBtn")) $("startBtn").disabled = true;
 
   const res = await fetch(APPS_SCRIPT_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type":"application/json" },
     body: JSON.stringify(payload)
   });
 
-  const data = await res.json().catch(() => ({}));
+  const data = await res.json().catch(()=> ({}));
   if (!res.ok || !data.ok) {
-    $("submitBtn").disabled = false;
+    if ($("submitBtn")) $("submitBtn").disabled = false;
     throw new Error(data.error || "Error enviando respuestas");
   }
 
   stopTimer();
-  localStorage.removeItem(LS_DRAFT_KEY(candidate.cedula)); // borra borrador al enviar
-  $("submitMsg").innerHTML = `<span class="ok">Evaluación enviada correctamente.</span>`;
+  localStorage.removeItem(LS_DRAFT_KEY(candidate.cedula));
+  if ($("submitMsg")) $("submitMsg").innerHTML = `<span class="ok">Evaluación enviada correctamente.</span>`;
 }
 
 async function autoSubmit(reason) {
   if (!$("submitBtn") || $("submitBtn").disabled) return;
-  $("submitMsg").innerHTML = `<span class="bad">${reason}. Enviando…</span>`;
-  try {
-    await submitAnswers(true, reason);
-  } catch (e) {
-    $("submitMsg").innerHTML = `<span class="bad">${e.message}</span>`;
-  }
+  if ($("submitMsg")) $("submitMsg").innerHTML = `<span class="bad">${reason}. Enviando…</span>`;
+  await submitAnswers(true, reason);
 }
 
 // ================= START FLOW =================
 async function beginExamFlow() {
-  $("submitMsg").textContent = "";
-  $("startMsg").textContent = "";
+  clearDebug();
+
+  const msg = $("startMsg");
+  if (msg) msg.textContent = "";
 
   const err = validateCandidate();
   if (err) {
-    $("startMsg").innerHTML = `<span class="bad">${err}</span>`;
+    if (msg) msg.innerHTML = `<span class="bad">${err}</span>`;
     return;
   }
 
   candidate = getCandidateFromForm();
 
-  // Bloqueo por cédula en este navegador
   if (isLocked(candidate.cedula)) {
-    $("startMsg").innerHTML = `<span class="bad">No es posible iniciar una nueva evaluación para esta cédula desde este dispositivo.</span>`;
+    if (msg) msg.innerHTML = `<span class="bad">No es posible iniciar una nueva evaluación para esta cédula desde este dispositivo.</span>`;
     return;
   }
 
-  // meta → calcula tiempo y muestra modal corporativo
   const meta = await apiGet("meta", candidate.area);
   const totalSec = (meta.questionCount || 0) * PER_QUESTION_SEC;
-  if (!meta.questionCount) {
-    $("startMsg").innerHTML = `<span class="bad">Área sin preguntas configuradas.</span>`;
-    return;
-  }
 
-  openModal(buildCorporateRulesHtml(mmss(totalSec)), async () => {
-    // lock una vez acepta
-    lockCandidate(candidate.cedula, {
-      cedula: candidate.cedula,
-      firstName: candidate.firstName,
-      lastName: candidate.lastName,
-      area: candidate.area,
-      lockedAtISO: new Date().toISOString()
-    });
+  openModal(rulesHtml(mmss(totalSec)), async () => {
+    lockCandidate(candidate.cedula, { ...candidate, lockedAtISO: new Date().toISOString() });
 
-    // Carga preguntas reales
     const out = await apiGet("questions", candidate.area);
+
     exam = {
       area: out.area,
       questions: out.questions || [],
@@ -432,30 +409,26 @@ async function beginExamFlow() {
     };
 
     if (!exam.questions.length) {
-      $("startMsg").innerHTML = `<span class="bad">Área sin preguntas disponibles.</span>`;
+      if (msg) msg.innerHTML = `<span class="bad">Área sin preguntas disponibles.</span>`;
       return;
     }
 
-    // Si hay draft (por ejemplo, corte de luz), lo restaura (pero sigue bloqueado)
+    // restore draft if any
     const draft = loadDraftIfAny();
     if (draft && Array.isArray(draft.answers)) {
-      draft.answers.forEach(a => {
-        if (a && a.id) exam.answersMap[a.id] = a.answer || "";
-      });
+      draft.answers.forEach(a => { if (a?.id) exam.answersMap[a.id] = a.answer || ""; });
       currentIndex = Math.min(Math.max(draft.currentIndex || 0, 0), exam.questions.length - 1);
     } else {
       currentIndex = 0;
     }
 
-    // Mostrar sección examen
-    $("examCard").classList.remove("hidden");
+    if ($("examCard")) $("examCard").classList.remove("hidden");
 
-    // Tiempo total
     startedAt = Date.now();
     deadlineAt = startedAt + totalSec * 1000;
 
-    $("pillLimit").textContent = `Límite: ${mmss(totalSec)}`;
-    $("timer").textContent = mmss(totalSec);
+    if ($("pillLimit")) $("pillLimit").textContent = `Límite: ${mmss(totalSec)}`;
+    if ($("timer")) $("timer").textContent = mmss(totalSec);
 
     setupSecurityOnce();
     startTimer();
@@ -463,38 +436,35 @@ async function beginExamFlow() {
     renderQuestionAt(currentIndex);
     saveDraft();
 
-    $("startMsg").innerHTML = `<span class="ok">Evaluación iniciada.</span>`;
+    if (msg) msg.innerHTML = `<span class="ok">Evaluación iniciada.</span>`;
     window.scrollTo({ top: $("examCard").offsetTop - 10, behavior: "smooth" });
   });
 }
 
-// ================= EVENTS =================
-$("area").addEventListener("change", () => showTimeForArea($("area").value));
-showTimeForArea($("area").value);
+// ================= INIT BINDINGS =================
+(function init(){
+  const area = $("area");
+  const startBtn = $("startBtn");
 
-$("startBtn").addEventListener("click", async () => {
-  try {
-    await beginExamFlow();
-  } catch (e) {
-    $("startMsg").innerHTML = `<span class="bad">${e.message}</span>`;
+  if (!area || !startBtn) {
+    showDebug("No se encontró #area o #startBtn. Revisa que el index.html sea el correcto.");
+    return;
   }
-});
 
-$("prevBtn").addEventListener("click", () => {
-  if (!exam) return;
-  if (currentIndex > 0) renderQuestionAt(currentIndex - 1);
-});
+  area.addEventListener("change", () => safe(() => showTimeForArea(area.value)));
+  safe(() => showTimeForArea(area.value));
 
-$("nextBtn").addEventListener("click", () => {
-  if (!exam) return;
-  if (currentIndex < exam.questions.length - 1) renderQuestionAt(currentIndex + 1);
-});
+  startBtn.addEventListener("click", () => safe(beginExamFlow));
 
-$("submitBtn").addEventListener("click", async () => {
-  $("submitMsg").textContent = "";
-  try {
+  const prevBtn = $("prevBtn");
+  const nextBtn = $("nextBtn");
+  const submitBtn = $("submitBtn");
+
+  if (prevBtn) prevBtn.addEventListener("click", () => { if (exam && currentIndex > 0) renderQuestionAt(currentIndex - 1); });
+  if (nextBtn) nextBtn.addEventListener("click", () => { if (exam && currentIndex < exam.questions.length - 1) renderQuestionAt(currentIndex + 1); });
+
+  if (submitBtn) submitBtn.addEventListener("click", () => safe(async () => {
+    if ($("submitMsg")) $("submitMsg").textContent = "";
     await submitAnswers(false, "");
-  } catch (e) {
-    $("submitMsg").innerHTML = `<span class="bad">${e.message}</span>`;
-  }
-});
+  }));
+})();
