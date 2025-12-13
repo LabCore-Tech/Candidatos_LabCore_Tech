@@ -25,7 +25,7 @@
       </div>
     </header>
 
-    <!-- DATOS DEL POSTULANTE -->
+    <!-- DATOS -->
     <section class="card">
       <h2>Datos del postulante</h2>
 
@@ -57,27 +57,39 @@
       </div>
 
       <div class="row">
-        <button id="startBtn" class="btn primary">Iniciar evaluación</button>
+        <button id="startBtn" class="btn primary" type="button">Iniciar evaluación</button>
         <span id="startMsg" class="hint"></span>
       </div>
     </section>
 
-    <!-- EXAMEN -->
+    <!-- EXAMEN (UNA PREGUNTA A LA VEZ) -->
     <section id="examCard" class="card hidden">
+
       <div class="row between">
-        <h2>Preguntas</h2>
-        <span id="timer" class="pill">--:--</span>
+        <div class="exam-head">
+          <h2>Preguntas</h2>
+          <div id="progress" class="progress">Pregunta 1 de 1</div>
+        </div>
+        <span id="timer" class="pill timer-danger">--:--</span>
       </div>
 
-		<div class="pills">
-		  <span class="pill" id="pillLimit">Límite: --:--</span>
-		</div>
-      <form id="examForm"></form>
+      <div class="pills">
+        <span class="pill" id="pillLimit">Límite: --:--</span>
+      </div>
 
-	  <div class="row">
-		<button id="submitBtn" class="btn primary" type="button">Enviar</button>
-		<span id="submitMsg" class="hint"></span>
-	  </div>
+      <div id="questionBox" class="question-box"></div>
+
+      <div class="row between">
+        <div class="nav">
+          <button id="prevBtn" class="btn ghost" type="button">Anterior</button>
+          <button id="nextBtn" class="btn ghost" type="button">Siguiente</button>
+        </div>
+
+        <div class="nav">
+          <button id="submitBtn" class="btn primary" type="button">Enviar</button>
+          <span id="submitMsg" class="hint"></span>
+        </div>
+      </div>
     </section>
 
     <footer class="foot">
@@ -85,6 +97,25 @@
     </footer>
 
   </main>
+
+  <!-- MODAL (CORPORATIVO) -->
+  <div id="startModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-card">
+      <div id="modalTitle" class="modal-title">Condiciones de la evaluación</div>
+
+      <div id="modalBody" class="modal-body"></div>
+
+      <label class="modal-check">
+        <input id="acceptRules" type="checkbox">
+        <span>He leído y acepto las condiciones.</span>
+      </label>
+
+      <div class="modal-actions">
+        <button id="cancelStartBtn" class="btn ghost" type="button">Cancelar</button>
+        <button id="confirmStartBtn" class="btn primary" type="button" disabled>Continuar</button>
+      </div>
+    </div>
+  </div>
 
   <script src="src/js/app.js"></script>
 </body>

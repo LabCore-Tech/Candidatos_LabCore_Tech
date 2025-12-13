@@ -8,12 +8,19 @@ const PER_QUESTION_SEC = 90;
 const TAB_LEAVE_AUTOSUBMIT_THRESHOLD = 3;
 const BLOCK_COPY_PASTE = true;
 
+// LocalStorage keys
+const LS_PREFIX = "labcore_eval";
+const LS_LOCK_KEY = (ced) => `${LS_PREFIX}:lock:${ced}`;
+const LS_DRAFT_KEY = (ced) => `${LS_PREFIX}:draft:${ced}`;
+
 // ================= STATE =================
 let exam = null;
 let startedAt = null;
 let deadlineAt = null;
 let timerInt = null;
 let securityWired = false;
+let currentIndex = 0;
+let candidate = null;
 
 const incidents = {
   total: 0,
@@ -39,11 +46,14 @@ function mmss(sec) {
   return `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
 }
 
-// REGISTRA PERO NO MUESTRA
 function addIncident(type, detail) {
   incidents.total++;
   incidents.events.push({ type, detail, at: new Date().toISOString() });
   if (incidents.events.length > 80) incidents.events.shift();
+}
+
+function safeJsonParse(text, fallback) {
+  try { return JSON.parse(text); } catch { return fallback; }
 }
 
 function validateCandidate() {
@@ -52,6 +62,14 @@ function validateCandidate() {
   if ($("cedula").value.trim().length < 5) return "Cédula inválida.";
   if (!$("area").value) return "Debe seleccionar el área a concursar.";
   return null;
+}
+
+function getCandidateFromForm() {
+  const firstName = $("firstName").value.trim();
+  const lastName  = $("lastName").value.trim();
+  const cedula    = $("cedula").value.trim();
+  const area      = $("area").value.trim();
+  return { firstName, lastName, cedula, area, fullName: `${firstName} ${lastName}`.trim() };
 }
 
 // ================= API =================
@@ -77,10 +95,8 @@ async function showTimeForArea(area) {
     return;
   }
 
-  msg.textContent = "";
-
   try {
-    const meta = await apiGet("meta", area); // { questionCount }
+    const meta = await apiGet("meta", area);
     const totalSec = (meta.questionCount || 0) * PER_QUESTION_SEC;
 
     if (!meta.questionCount) {
@@ -94,31 +110,124 @@ async function showTimeForArea(area) {
   }
 }
 
-// ================= RENDER =================
-function renderExam(questions) {
-  const f = $("examForm");
-  f.innerHTML = "";
+// ================= UI: MODAL =================
+function openModal(htmlBody, onConfirm) {
+  $("modalBody").innerHTML = htmlBody;
+  $("startModal").classList.remove("hidden");
+  $("acceptRules").checked = false;
+  $("confirmStartBtn").disabled = true;
 
-  questions.forEach((q, i) => {
-    const div = document.createElement("div");
-    div.className = "q";
-    div.innerHTML = `
-      <h3>${i + 1}. ${q.prompt}</h3>
-      <div class="small">Módulo: ${q.moduleName}</div>
-      <textarea name="q_${q.id}" required placeholder="Escribe tu respuesta..."></textarea>
-    `;
-    f.appendChild(div);
+  const accept = () => {
+    $("startModal").classList.add("hidden");
+    onConfirm();
+  };
+
+  const cancel = () => {
+    $("startModal").classList.add("hidden");
+  };
+
+  const onCheck = () => {
+    $("confirmStartBtn").disabled = !$("acceptRules").checked;
+  };
+
+  // Bind once per open
+  $("acceptRules").onchange = onCheck;
+  $("confirmStartBtn").onclick = accept;
+  $("cancelStartBtn").onclick = cancel;
+}
+
+function buildCorporateRulesHtml(totalTimeStr) {
+  return `
+    <div>
+      Esta evaluación tiene una duración máxima de <b>${totalTimeStr}</b>. Una vez iniciada, no es posible reiniciarla.
+      <ul>
+        <li>Procura realizarla en un espacio estable, con el tiempo disponible completo.</li>
+        <li>Evita recargar la página o cerrar la ventana durante la evaluación.</li>
+        <li>Por integridad del proceso, si se interrumpe la sesión (salida de la página o pérdida de continuidad), la evaluación puede quedar invalidada.</li>
+      </ul>
+    </div>
+  `;
+}
+
+// ================= BLOQUEO POR CÉDULA (EN ESTE NAVEGADOR) =================
+function isLocked(cedula) {
+  return localStorage.getItem(LS_LOCK_KEY(cedula)) === "1";
+}
+function lockCandidate(cedula, snapshot) {
+  localStorage.setItem(LS_LOCK_KEY(cedula), "1");
+  // Guarda también un snapshot simple (para audit interno)
+  localStorage.setItem(`${LS_PREFIX}:who:${cedula}`, JSON.stringify(snapshot));
+}
+
+// ================= AUTOSAVE DRAFT =================
+function saveDraft() {
+  if (!candidate || !exam) return;
+  const answers = collectAnswersSoft();
+  const payload = {
+    candidate,
+    currentIndex,
+    answers,
+    savedAtISO: new Date().toISOString()
+  };
+  localStorage.setItem(LS_DRAFT_KEY(candidate.cedula), JSON.stringify(payload));
+}
+
+function loadDraftIfAny() {
+  if (!candidate) return null;
+  const raw = localStorage.getItem(LS_DRAFT_KEY(candidate.cedula));
+  if (!raw) return null;
+  return safeJsonParse(raw, null);
+}
+
+// ================= RENDER UNA PREGUNTA =================
+function renderQuestionAt(index) {
+  currentIndex = index;
+
+  const q = exam.questions[currentIndex];
+  const box = $("questionBox");
+  const n = exam.questions.length;
+
+  $("progress").textContent = `Pregunta ${currentIndex + 1} de ${n}`;
+
+  // Botones
+  $("prevBtn").disabled = currentIndex === 0;
+  $("nextBtn").disabled = currentIndex === n - 1;
+
+  // Traer respuesta previa si existe
+  const existing = (exam.answersMap[q.id] || "");
+
+  box.innerHTML = `
+    <div class="qtitle">${currentIndex + 1}. ${q.prompt}</div>
+    <div class="qmeta">Módulo: ${q.moduleName}</div>
+    <div class="qanswer">
+      <textarea id="answerBox" placeholder="Escribe tu respuesta..."></textarea>
+    </div>
+  `;
+
+  const ta = $("answerBox");
+  ta.value = existing;
+
+  ta.addEventListener("input", () => {
+    exam.answersMap[q.id] = ta.value;
+    saveDraft();
   });
 }
 
-function collectAnswers() {
-  return exam.questions.map((q) => ({
+function collectAnswersSoft() {
+  if (!exam) return [];
+  return exam.questions.map(q => ({
     id: q.id,
     module: q.moduleName,
     moduleId: q.moduleId,
     prompt: q.prompt,
-    answer: (document.querySelector(`[name="q_${q.id}"]`)?.value || "").trim()
+    answer: (exam.answersMap[q.id] || "").trim()
   }));
+}
+
+function validateAllAnswered() {
+  const answers = collectAnswersSoft();
+  const missing = answers.filter(a => !a.answer);
+  return missing.length === 0;
 }
 
 // ================= TIMER =================
@@ -196,7 +305,7 @@ function setupSecurityOnce() {
       incidents.tabLeaves++;
       addIncident("tab_leave", `hidden (${incidents.tabLeaves})`);
       if (incidents.tabLeaves >= TAB_LEAVE_AUTOSUBMIT_THRESHOLD) {
-        autoSubmit(`Auto-envío por salidas de pestaña (${incidents.tabLeaves})`);
+        autoSubmit("Interrupción de sesión detectada");
       }
     }
   });
@@ -205,15 +314,22 @@ function setupSecurityOnce() {
     incidents.blurCount++;
     addIncident("window_blur", `blur (${incidents.blurCount})`);
   });
+
+  // Evita recarga accidental (best-effort)
+  window.addEventListener("beforeunload", (e) => {
+    if (!exam) return;
+    addIncident("beforeunload", "attempted_leave");
+    e.preventDefault();
+    e.returnValue = "";
+  });
 }
 
 // ================= SUBMIT =================
 async function submitAnswers(isAuto = false, autoReason = "") {
-  const form = $("examForm");
+  if (!exam || !candidate) return;
 
   if (!isAuto) {
-    if (!form.checkValidity()) {
-      form.reportValidity();
+    if (!validateAllAnswered()) {
       $("submitMsg").innerHTML = `<span class="bad">Faltan respuestas.</span>`;
       return;
     }
@@ -222,11 +338,11 @@ async function submitAnswers(isAuto = false, autoReason = "") {
   const payload = {
     token: APP_TOKEN,
     candidate: {
-      fullName: `${$("firstName").value.trim()} ${$("lastName").value.trim()}`.trim(),
-      firstName: $("firstName").value.trim(),
-      lastName: $("lastName").value.trim(),
-      cedula: $("cedula").value.trim(),
-      area: $("area").value.trim()
+      fullName: candidate.fullName,
+      firstName: candidate.firstName,
+      lastName: candidate.lastName,
+      cedula: candidate.cedula,
+      area: candidate.area
     },
     meta: {
       startedAtISO: startedAt ? new Date(startedAt).toISOString() : null,
@@ -237,7 +353,7 @@ async function submitAnswers(isAuto = false, autoReason = "") {
       userAgent: navigator.userAgent
     },
     incidents,
-    answers: collectAnswers()
+    answers: collectAnswersSoft()
   };
 
   $("submitBtn").disabled = true;
@@ -256,6 +372,7 @@ async function submitAnswers(isAuto = false, autoReason = "") {
   }
 
   stopTimer();
+  localStorage.removeItem(LS_DRAFT_KEY(candidate.cedula)); // borra borrador al enviar
   $("submitMsg").innerHTML = `<span class="ok">Evaluación enviada correctamente.</span>`;
 }
 
@@ -269,11 +386,8 @@ async function autoSubmit(reason) {
   }
 }
 
-// ================= INIT =================
-$("area").addEventListener("change", () => showTimeForArea($("area").value));
-showTimeForArea($("area").value);
-
-$("startBtn").addEventListener("click", async () => {
+// ================= START FLOW =================
+async function beginExamFlow() {
   $("submitMsg").textContent = "";
   $("startMsg").textContent = "";
 
@@ -283,20 +397,61 @@ $("startBtn").addEventListener("click", async () => {
     return;
   }
 
-  try {
-    const out = await apiGet("questions", $("area").value);
+  candidate = getCandidateFromForm();
 
-    exam = { area: out.area, questions: out.questions || [] };
+  // Bloqueo por cédula en este navegador
+  if (isLocked(candidate.cedula)) {
+    $("startMsg").innerHTML = `<span class="bad">No es posible iniciar una nueva evaluación para esta cédula desde este dispositivo.</span>`;
+    return;
+  }
+
+  // meta → calcula tiempo y muestra modal corporativo
+  const meta = await apiGet("meta", candidate.area);
+  const totalSec = (meta.questionCount || 0) * PER_QUESTION_SEC;
+  if (!meta.questionCount) {
+    $("startMsg").innerHTML = `<span class="bad">Área sin preguntas configuradas.</span>`;
+    return;
+  }
+
+  openModal(buildCorporateRulesHtml(mmss(totalSec)), async () => {
+    // lock una vez acepta
+    lockCandidate(candidate.cedula, {
+      cedula: candidate.cedula,
+      firstName: candidate.firstName,
+      lastName: candidate.lastName,
+      area: candidate.area,
+      lockedAtISO: new Date().toISOString()
+    });
+
+    // Carga preguntas reales
+    const out = await apiGet("questions", candidate.area);
+    exam = {
+      area: out.area,
+      questions: out.questions || [],
+      answersMap: {}
+    };
+
     if (!exam.questions.length) {
       $("startMsg").innerHTML = `<span class="bad">Área sin preguntas disponibles.</span>`;
       return;
     }
 
-    renderExam(exam.questions);
+    // Si hay draft (por ejemplo, corte de luz), lo restaura (pero sigue bloqueado)
+    const draft = loadDraftIfAny();
+    if (draft && Array.isArray(draft.answers)) {
+      draft.answers.forEach(a => {
+        if (a && a.id) exam.answersMap[a.id] = a.answer || "";
+      });
+      currentIndex = Math.min(Math.max(draft.currentIndex || 0, 0), exam.questions.length - 1);
+    } else {
+      currentIndex = 0;
+    }
+
+    // Mostrar sección examen
     $("examCard").classList.remove("hidden");
 
+    // Tiempo total
     startedAt = Date.now();
-    const totalSec = exam.questions.length * PER_QUESTION_SEC;
     deadlineAt = startedAt + totalSec * 1000;
 
     $("pillLimit").textContent = `Límite: ${mmss(totalSec)}`;
@@ -305,11 +460,34 @@ $("startBtn").addEventListener("click", async () => {
     setupSecurityOnce();
     startTimer();
 
+    renderQuestionAt(currentIndex);
+    saveDraft();
+
     $("startMsg").innerHTML = `<span class="ok">Evaluación iniciada.</span>`;
     window.scrollTo({ top: $("examCard").offsetTop - 10, behavior: "smooth" });
+  });
+}
+
+// ================= EVENTS =================
+$("area").addEventListener("change", () => showTimeForArea($("area").value));
+showTimeForArea($("area").value);
+
+$("startBtn").addEventListener("click", async () => {
+  try {
+    await beginExamFlow();
   } catch (e) {
     $("startMsg").innerHTML = `<span class="bad">${e.message}</span>`;
   }
+});
+
+$("prevBtn").addEventListener("click", () => {
+  if (!exam) return;
+  if (currentIndex > 0) renderQuestionAt(currentIndex - 1);
+});
+
+$("nextBtn").addEventListener("click", () => {
+  if (!exam) return;
+  if (currentIndex < exam.questions.length - 1) renderQuestionAt(currentIndex + 1);
 });
 
 $("submitBtn").addEventListener("click", async () => {

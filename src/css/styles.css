@@ -91,7 +91,7 @@ input:focus,select:focus,textarea:focus{
   box-shadow:0 0 0 4px rgba(59,130,246,.12);
 }
 
-textarea{min-height:92px;resize:vertical}
+textarea{min-height:120px;resize:vertical}
 
 .row{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
 .between{justify-content:space-between}
@@ -123,15 +123,96 @@ textarea{min-height:92px;resize:vertical}
 .ok{color:var(--ok)}
 .bad{color:var(--bad)}
 
-.q{
-  border:1px solid var(--line);
-  border-radius:14px;
-  padding:12px;
-  margin:10px 0;
-  background:#fff;
-}
-.q h3{margin:0 0 6px;font-size:15px}
-.small{font-size:12px;color:var(--muted)}
-
 .hidden{display:none}
 .foot{margin-top:18px;color:var(--muted)}
+
+/* ===== EXAM HEAD ===== */
+.exam-head{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.progress{
+  font-size:13px;
+  color: var(--muted);
+}
+
+/* ===== Timer rojo ===== */
+.timer-danger{
+  color: var(--bad);
+  border-color: rgba(239,68,68,.35);
+}
+
+/* ===== Una pregunta a la vez ===== */
+.question-box{
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  background: #fff;
+}
+.qtitle{
+  font-size: 16px;
+  font-weight: 800;
+  margin: 0 0 8px;
+}
+.qmeta{
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.qanswer textarea{
+  width: 100%;
+}
+
+/* ===== Nav ===== */
+.nav{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+/* ===== Modal ===== */
+.modal{
+  position: fixed;
+  inset: 0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background: rgba(15, 20, 40, .35);
+  padding: 18px;
+  z-index: 9999;
+}
+.modal-card{
+  width: min(680px, 100%);
+  background: rgba(255,255,255,.92);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 18px 60px rgba(20,26,42,.18);
+  backdrop-filter: blur(10px);
+  padding: 16px;
+}
+.modal-title{
+  font-size: 16px;
+  font-weight: 900;
+  margin-bottom: 10px;
+}
+.modal-body{
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.modal-body ul{
+  margin: 10px 0 0 18px;
+}
+.modal-check{
+  margin-top: 12px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.modal-actions{
+  margin-top: 14px;
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  flex-wrap:wrap;
+}
