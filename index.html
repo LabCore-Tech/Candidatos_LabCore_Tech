@@ -9,18 +9,23 @@
 <body>
   <main class="wrap">
 
-    <header class="brand">
-      <div class="brand-row">
-        <img src="src/img/LabCore.webp" alt="LabCore Logo" class="brand-logo">
-        <img src="src/img/LabCoretxt.webp" alt="LabCore Tech" class="brand-text">
-      </div>
+    <!-- TOPBAR PRO -->
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brandline">
+          <div class="logo-badge">
+            <img src="src/img/LabCore.webp" alt="LabCore Logo" class="brand-logo">
+          </div>
 
-      <p class="tagline">
-        Evaluación de ingreso a LabCore Tech.
-		Se registra tiempo e incidencias.
-      </p>
+          <div class="brandcopy">
+            <img src="src/img/LabCoretxt.webp" alt="LabCore Tech" class="brand-text">
+            <div class="brand-subtitle">Evaluación de ingreso</div>
+          </div>
+        </div>
+      </div>
     </header>
 
+    <!-- DATOS DEL POSTULANTE -->
     <section class="card">
       <h2>Datos del postulante</h2>
 
@@ -57,25 +62,22 @@
       </div>
     </section>
 
+    <!-- EXAMEN -->
     <section id="examCard" class="card hidden">
       <div class="row between">
         <h2>Preguntas</h2>
         <span id="timer" class="pill">--:--</span>
       </div>
 
-      <div class="pills">
-        <span class="pill" id="pillLimit">Límite: --:--</span>
-        <span class="pill" id="pillIncidents">Incidencias: 0</span>
-        <span class="pill" id="pillTab">Salidas: 0</span>
-      </div>
-
+		<div class="pills">
+		  <span class="pill" id="pillLimit">Límite: --:--</span>
+		</div>
       <form id="examForm"></form>
 
-      <div class="row">
-        <button id="submitBtn" class="btn primary" type="button">Enviar</button>
-        <button id="resetBtn" class="btn ghost" type="button">Reiniciar</button>
-        <span id="submitMsg" class="hint"></span>
-      </div>
+	  <div class="row">
+		<button id="submitBtn" class="btn primary" type="button">Enviar</button>
+		<span id="submitMsg" class="hint"></span>
+	  </div>
     </section>
 
     <footer class="foot">
