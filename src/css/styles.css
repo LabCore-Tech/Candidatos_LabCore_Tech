@@ -1,0 +1,106 @@
+:root{
+  --bg1:#f6f8ff;
+  --bg2:#eef3ff;
+  --card:#ffffff;
+  --text:#141a2a;
+  --muted:#5a647c;
+  --line:#dbe3ff;
+  --accent:#3b82f6;
+  --ok:#0f766e;
+  --bad:#ef4444;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+  color:var(--text);
+  background:
+    radial-gradient(900px 450px at 10% 0%, #dfe9ff 0%, transparent 60%),
+    radial-gradient(900px 450px at 90% 10%, #e6f0ff 0%, transparent 55%),
+    linear-gradient(180deg, var(--bg1), var(--bg2));
+}
+
+.wrap{max-width:980px;margin:0 auto;padding:24px}
+
+.brand{margin-bottom:18px}
+.brand-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand-logo{height:56px}
+.brand-text{height:42px}
+.tagline{margin-top:10px;color:var(--muted);max-width:760px}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:18px;
+  margin-bottom:14px;
+  box-shadow:0 8px 24px rgba(20,26,42,.06);
+}
+
+h2{margin:0 0 12px;font-size:18px}
+
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+.grid.single{grid-template-columns:1fr 1fr}
+@media(max-width:780px){
+  .grid,.grid.single{grid-template-columns:1fr}
+}
+
+label{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:13px}
+
+input,select,textarea{
+  padding:11px 12px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  background:#fbfcff;
+}
+
+textarea{min-height:92px;resize:vertical}
+
+.row{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
+.between{justify-content:space-between}
+
+.btn{
+  padding:10px 14px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  background:#fff;
+  cursor:pointer;
+}
+.primary{
+  border-color:rgba(59,130,246,.45);
+  background:linear-gradient(180deg, rgba(59,130,246,.16), rgba(37,99,235,.10));
+}
+.ghost{opacity:.85}
+
+.pill{
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  font-size:12px;
+  color:var(--muted);
+}
+
+.pills{display:flex;gap:8px;flex-wrap:wrap}
+
+.hint{font-size:13px;color:var(--muted)}
+.ok{color:var(--ok)}
+.bad{color:var(--bad)}
+
+.q{
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:12px;
+  margin:10px 0;
+}
+
+.q h3{margin:0 0 6px;font-size:15px}
+.small{font-size:12px;color:var(--muted)}
+
+.hidden{display:none}
+.foot{margin-top:18px;color:var(--muted)}

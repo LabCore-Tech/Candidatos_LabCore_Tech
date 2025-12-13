@@ -2,46 +2,59 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>LabCore Tech | Prueba de razonamiento</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LabCore Tech | Evaluación</title>
+  <link rel="stylesheet" href="src/css/styles.css" />
 </head>
 <body>
-  <main class="wrap noselect">
-    <header class="head">
-      <h1>Prueba de razonamiento</h1>
-      <p class="sub">Responde con claridad. El sistema registra tiempo e incidencias.</p>
+  <main class="wrap">
+
+    <header class="brand">
+      <div class="brand-row">
+        <img src="src/img/LabCore.webp" alt="LabCore Logo" class="brand-logo">
+        <img src="src/img/LabCoretxt.webp" alt="LabCore Tech" class="brand-text">
+      </div>
+
+      <p class="tagline">
+        Evaluación de ingreso a LabCore Tech.
+		Se registra tiempo e incidencias.
+      </p>
     </header>
 
     <section class="card">
-      <h2>Datos del candidato</h2>
+      <h2>Datos del postulante</h2>
+
       <div class="grid">
         <label>
-          Nombre completo
-          <input id="fullName" type="text" autocomplete="name" required />
+          Nombre
+          <input id="firstName" type="text" autocomplete="given-name" required>
         </label>
 
+        <label>
+          Apellido
+          <input id="lastName" type="text" autocomplete="family-name" required>
+        </label>
+      </div>
+
+      <div class="grid single">
         <label>
           Cédula
-          <input id="cedula" type="text" inputmode="numeric" required />
+          <input id="cedula" type="text" inputmode="numeric" required>
         </label>
 
         <label>
-          Personaje / Rol (ej: Backend Jr, QA, etc.)
-          <input id="role" type="text" required />
-        </label>
-
-        <label>
-          Código de acceso (si aplica)
-          <input id="accessCode" type="text" placeholder="(opcional)" />
+          Área a concursar
+          <select id="area" required>
+            <option value="" selected>Selecciona el área…</option>
+            <option value="DEV">DEV (Desarrollo / Programación)</option>
+          </select>
         </label>
       </div>
 
       <div class="row">
-        <button id="startBtn" class="btn">Iniciar examen</button>
+        <button id="startBtn" class="btn primary">Iniciar evaluación</button>
+        <span id="startMsg" class="hint"></span>
       </div>
-
-      <p id="startMsg" class="hint"></p>
     </section>
 
     <section id="examCard" class="card hidden">
@@ -50,31 +63,27 @@
         <span id="timer" class="pill">--:--</span>
       </div>
 
-      <div class="row between">
-        <div class="pills">
-          <span class="pill" id="pillLimit">Límite: --:--</span>
-          <span class="pill" id="pillIncidents">Incidencias: 0</span>
-          <span class="pill" id="pillTab">Salidas: 0</span>
-        </div>
+      <div class="pills">
+        <span class="pill" id="pillLimit">Límite: --:--</span>
+        <span class="pill" id="pillIncidents">Incidencias: 0</span>
+        <span class="pill" id="pillTab">Salidas: 0</span>
       </div>
 
       <form id="examForm"></form>
 
       <div class="row">
-        <button id="submitBtn" class="btn primary" type="button">Enviar respuestas</button>
+        <button id="submitBtn" class="btn primary" type="button">Enviar</button>
         <button id="resetBtn" class="btn ghost" type="button">Reiniciar</button>
+        <span id="submitMsg" class="hint"></span>
       </div>
-
-      <p id="submitMsg" class="hint"></p>
     </section>
 
     <footer class="foot">
-      <small>LabCore Tech · Evaluación interna</small>
+      <small>LabCore Tech · Uso interno</small>
     </footer>
+
   </main>
 
-  <script src="app.js"></script>
+  <script src="src/js/app.js"></script>
 </body>
 </html>
-
-
