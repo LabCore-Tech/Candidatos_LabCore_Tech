@@ -9,6 +9,7 @@
 <body>
   <main class="wrap">
 
+    <!-- TOPBAR -->
     <header class="topbar">
       <div class="topbar-inner">
         <div class="brandline">
@@ -24,7 +25,7 @@
       </div>
     </header>
 
-    <!-- DATOS -->
+    <!-- FORM -->
     <section class="card" id="formCard">
       <h2>Datos del postulante</h2>
 
@@ -59,11 +60,9 @@
         <button id="startBtn" class="btn primary" type="button">Iniciar evaluación</button>
         <span id="startMsg" class="hint"></span>
       </div>
-
-      <div id="debugBox" class="debug hidden"></div>
     </section>
 
-    <!-- EXAMEN 1x1 -->
+    <!-- EXAM (1 pregunta a la vez) -->
     <section id="examCard" class="card hidden">
 
       <div class="row between">
@@ -84,7 +83,6 @@
         <div class="nav">
           <button id="okBtn" class="btn primary" type="button">OK</button>
         </div>
-
         <div class="nav">
           <span id="submitMsg" class="hint"></span>
         </div>
@@ -96,7 +94,7 @@
     </footer>
 
   </main>
+
   <script src="src/js/app.js"></script>
 </body>
 </html>
-
