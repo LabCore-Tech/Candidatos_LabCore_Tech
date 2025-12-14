@@ -18,54 +18,49 @@
             <img src="src/img/LabCore.webp" alt="LabCore Logo" class="brand-logo">
           </div>
 
-          <div class="brandcopy">
-            <img src="src/img/LabCoretxt.webp" alt="LabCore Tech" class="brand-text">
-            <div class="brand-subtitle">Evaluación de ingreso</div>
-          </div>
+        <div class="brandcopy">
+          <img src="src/img/LabCoretxt.webp" alt="LabCore Tech" class="brand-text">
+          <div class="brand-subtitle">Evaluación de ingreso</div>
         </div>
       </div>
     </header>
 
-    <!-- FORM CARD -->
+    <!-- FORM -->
     <section class="card" id="formCard">
       <h2>Datos del postulante</h2>
 
       <div class="grid3">
-        <!-- fila 1 -->
+        <!-- Fila 1 -->
         <div class="field">
           <label for="firstName">Nombre</label>
           <input id="firstName" type="text" autocomplete="given-name" required />
         </div>
-
         <div class="field">
           <label for="lastName">Apellido</label>
           <input id="lastName" type="text" autocomplete="family-name" required />
         </div>
-
         <div class="field">
           <label for="cedula">Cédula</label>
           <input id="cedula" type="text" inputmode="numeric" autocomplete="off" required />
         </div>
 
-        <!-- fila 2 -->
+        <!-- Fila 2 -->
         <div class="field">
           <label for="university">Universidad</label>
           <input id="university" type="text" autocomplete="organization" required />
         </div>
-
         <div class="field">
           <label for="career">Carrera</label>
           <select id="career" required>
-            <option value="">Selecciona...</option>
+            <option value="">Selecciona…</option>
             <option value="DESARROLLO_SOFTWARE">Desarrollo de Software</option>
             <option value="ING_SISTEMAS">Ingeniería de Sistemas</option>
           </select>
         </div>
-
         <div class="field">
           <label for="semester">Semestre</label>
           <select id="semester" required>
-            <option value="">Selecciona...</option>
+            <option value="">Selecciona…</option>
             <option value="1">1</option><option value="2">2</option><option value="3">3</option>
             <option value="4">4</option><option value="5">5</option><option value="6">6</option>
             <option value="7">7</option><option value="8">8</option><option value="9">9</option>
@@ -73,16 +68,15 @@
           </select>
         </div>
 
-        <!-- fila 3 (cargo ocupa 2 columnas para que se vea pro) -->
+        <!-- Fila 3 -->
         <div class="field span2">
           <label for="role">Cargo a aspirar</label>
           <select id="role" required>
-            <option value="">Selecciona...</option>
+            <option value="">Selecciona…</option>
             <option value="AUX_DEV">Auxiliar de Desarrollo</option>
             <option value="DEV">Desarrollador</option>
           </select>
         </div>
-
         <div class="field">
           <label for="cvFile">Hoja de vida (PDF / DOC / DOCX)</label>
           <input id="cvFile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required />
@@ -96,20 +90,16 @@
       </div>
     </section>
 
-    <!-- EXAM CARD -->
+    <!-- EXAM -->
     <section class="card hidden" id="examCard">
       <div class="exam-head">
-        <div>
-          <h2>Preguntas</h2>
-          <div class="pill" id="pillLimit">Límite: --:--</div>
-        </div>
-
+        <h2>Preguntas</h2>
         <div class="timer">
-          <div class="timer-pill" id="timer">--:--</div>
+          <div class="timer-pill" id="timer">90:00</div>
         </div>
       </div>
 
-      <div class="progress" id="progress">Pregunta 1 de 5</div>
+      <!-- Quitamos “Pregunta X de Y” y “Módulo: …” -->
       <div id="questionBox" class="questionBox"></div>
 
       <div class="actions">
@@ -120,7 +110,7 @@
       <div id="debugBox" class="debug hidden"></div>
     </section>
 
-    <!-- MODAL -->
+    <!-- MODAL (aparece SOLO al pulsar Iniciar) -->
     <div id="infoModal" class="modal hidden" aria-hidden="true">
       <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div class="modal-top">
