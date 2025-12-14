@@ -3,13 +3,23 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzHvvOQPnKd4ZJy
 const APP_TOKEN = "9fA2xQe7MZk4T8Rj3P0LwB1YhD5C6mSNaVUp";
 
 const PER_QUESTION_SEC = 90;
-const MAX_CV_BYTES = 8 * 1024 * 1024; // 8MB recomendado
+const MAX_CV_BYTES = 8 * 1024 * 1024;
 
 // ================= HELPERS =================
 const $ = (id) => document.getElementById(id);
 
-function showDebug(msg){ const b=$("debugBox"); if(!b) return; b.textContent=msg; b.classList.remove("hidden"); }
-function clearDebug(){ const b=$("debugBox"); if(!b) return; b.textContent=""; b.classList.add("hidden"); }
+function showDebug(msg){
+  const b = $("debugBox");
+  if(!b) return;
+  b.textContent = msg;
+  b.classList.remove("hidden");
+}
+function clearDebug(){
+  const b = $("debugBox");
+  if(!b) return;
+  b.textContent = "";
+  b.classList.add("hidden");
+}
 
 function mmss(sec){
   sec = Math.max(0, Math.floor(sec));
@@ -34,7 +44,6 @@ function fileToBase64(file){
   return new Promise((resolve, reject)=>{
     const fr = new FileReader();
     fr.onload = ()=> {
-      // data:<mime>;base64,....
       const res = String(fr.result || "");
       const base64 = res.split(",")[1] || "";
       resolve(base64);
@@ -46,8 +55,8 @@ function fileToBase64(file){
 
 // ================= STATE =================
 let candidate = null;
-let cvPayload = null; // {name,mime,base64,bytes}
-let exam = null;      // {questions[], answersMap{}}
+let cvPayload = null;
+let exam = null;
 let idx = 0;
 
 let startedAt = 0;
@@ -57,22 +66,13 @@ let timerInt = null;
 let securityWired = false;
 let invalidated = false;
 
-// “No repetir evaluación” (por cédula en este navegador)
 const LS_PREFIX = "labcore_eval";
 const LS_LOCK = (ced) => `${LS_PREFIX}:lock:${ced}`;
 
-// incidencias SOLO para ti
+// incidencias solo para ti
 const incidents = {
-  total:0,
-  copyBlocked:0,
-  pasteBlocked:0,
-  cutBlocked:0,
-  contextMenuBlocked:0,
-  printScreen:0,
-  ctrlP:0,
-  visibilityChanges:0,
-  blurCount:0,
-  beforeUnload:0,
+  total:0, copyBlocked:0, pasteBlocked:0, cutBlocked:0, contextMenuBlocked:0,
+  printScreen:0, ctrlP:0, visibilityChanges:0, blurCount:0, beforeUnload:0,
   events:[]
 };
 
@@ -82,12 +82,8 @@ function addIncident(type, detail){
   if(incidents.events.length > 120) incidents.events.shift();
 }
 
-function lockCedula(ced){
-  localStorage.setItem(LS_LOCK(ced), "1");
-}
-function isLocked(ced){
-  return localStorage.getItem(LS_LOCK(ced)) === "1";
-}
+function lockCedula(ced){ localStorage.setItem(LS_LOCK(ced), "1"); }
+function isLocked(ced){ return localStorage.getItem(LS_LOCK(ced)) === "1"; }
 
 // ================= MODAL =================
 function openModal(html){
@@ -111,15 +107,20 @@ function modalHtml(totalStr){
   `;
 }
 
-// ✅ NUEVO: función “pendiente” que se ejecuta SOLO si el usuario acepta el modal
 let pendingStart = null;
+
+// ================= AREA (interna) =================
+function deriveAreaFromRole(role){
+  // Por ahora ambos cargos pertenecen al mismo banco DEV
+  if(role === "AUX_DEV" || role === "DEV") return "DEV";
+  return "DEV";
+}
 
 // ================= VALIDATION =================
 function validateForm(){
   const firstName = $("firstName").value.trim();
   const lastName  = $("lastName").value.trim();
   const cedula    = $("cedula").value.trim();
-  const area      = $("area").value;
 
   const university = $("university").value.trim();
   const career     = $("career").value;
@@ -131,7 +132,6 @@ function validateForm(){
   if(firstName.length < 2) return "Nombre inválido.";
   if(lastName.length < 2) return "Apellido inválido.";
   if(cedula.length < 5) return "Cédula inválida.";
-  if(!area) return "Selecciona el área a concursar.";
 
   if(university.length < 2) return "Universidad inválida.";
   if(!career) return "Selecciona la carrera.";
@@ -145,70 +145,57 @@ function validateForm(){
 }
 
 function buildCandidate(){
+  const role = $("role").value;
+  const area = deriveAreaFromRole(role);
+
   return {
     firstName: $("firstName").value.trim(),
     lastName:  $("lastName").value.trim(),
     cedula:    $("cedula").value.trim(),
-    area:      $("area").value,
     university: $("university").value.trim(),
     career:     $("career").value,
     semester:   $("semester").value,
-    role:       $("role").value,
+    role,
+    area,
     fullName: `${$("firstName").value.trim()} ${$("lastName").value.trim()}`
   };
 }
 
-// ================= SECURITY / NOVELTIES =================
+// ================= SECURITY =================
 function wireSecurityOnce(){
   if(securityWired) return;
   securityWired = true;
 
-  document.addEventListener("copy", (e)=>{
-    incidents.copyBlocked++; addIncident("copy_blocked", "copy");
-    e.preventDefault();
-  });
-  document.addEventListener("cut", (e)=>{
-    incidents.cutBlocked++; addIncident("cut_blocked", "cut");
-    e.preventDefault();
-  });
-  document.addEventListener("paste", (e)=>{
-    incidents.pasteBlocked++; addIncident("paste_blocked", "paste");
-    e.preventDefault();
-  });
-  document.addEventListener("contextmenu", (e)=>{
-    incidents.contextMenuBlocked++; addIncident("contextmenu_blocked", "contextmenu");
-    e.preventDefault();
-  });
+  document.addEventListener("copy", (e)=>{ incidents.copyBlocked++; addIncident("copy_blocked","copy"); e.preventDefault(); });
+  document.addEventListener("cut", (e)=>{ incidents.cutBlocked++; addIncident("cut_blocked","cut"); e.preventDefault(); });
+  document.addEventListener("paste",(e)=>{ incidents.pasteBlocked++; addIncident("paste_blocked","paste"); e.preventDefault(); });
+  document.addEventListener("contextmenu",(e)=>{ incidents.contextMenuBlocked++; addIncident("contextmenu_blocked","contextmenu"); e.preventDefault(); });
 
   document.addEventListener("keydown", (e)=>{
-    if(e.key === "PrintScreen"){
-      incidents.printScreen++; addIncident("printscreen", "PrintScreen");
-    }
+    if(e.key === "PrintScreen"){ incidents.printScreen++; addIncident("printscreen","PrintScreen"); }
     const isMac = navigator.platform.toLowerCase().includes("mac");
     const ctrlOrCmd = isMac ? e.metaKey : e.ctrlKey;
     if(ctrlOrCmd && (e.key.toLowerCase() === "p")){
-      incidents.ctrlP++; addIncident("print_attempt", "Ctrl/Cmd+P");
+      incidents.ctrlP++; addIncident("print_attempt","Ctrl/Cmd+P");
       e.preventDefault();
     }
   });
 
   document.addEventListener("visibilitychange", ()=>{
     incidents.visibilityChanges++;
-    addIncident("visibilitychange", document.hidden ? "hidden" : "visible");
-    if(document.hidden){
-      invalidate("Cambio de pestaña/ventana (sesión interrumpida)");
-    }
+    addIncident("visibilitychange", document.hidden ? "hidden":"visible");
+    if(document.hidden) invalidate("Cambio de pestaña/ventana (sesión interrumpida)");
   });
 
   window.addEventListener("blur", ()=>{
     incidents.blurCount++;
-    addIncident("window_blur", "blur");
+    addIncident("window_blur","blur");
   });
 
   window.addEventListener("beforeunload", (e)=>{
     if(!exam) return;
     incidents.beforeUnload++;
-    addIncident("beforeunload", "attempt_leave_or_refresh");
+    addIncident("beforeunload","attempt_leave_or_refresh");
     invalidate("Intento de recarga/cierre (sesión interrumpida)");
     e.preventDefault();
     e.returnValue = "";
@@ -220,14 +207,12 @@ function invalidate(reason){
   invalidated = true;
   addIncident("invalidated", reason);
 
-  if(candidate?.cedula){
-    lockCedula(candidate.cedula);
-  }
+  if(candidate?.cedula) lockCedula(candidate.cedula);
 
   stopTimer();
-
   if($("okBtn")) $("okBtn").disabled = true;
-  if($("submitMsg")) $("submitMsg").innerHTML = `<span class="bad">La sesión fue interrumpida. La evaluación no está disponible nuevamente.</span>`;
+  if($("submitMsg")) $("submitMsg").innerHTML =
+    `<span class="bad">La sesión fue interrumpida. La evaluación no está disponible nuevamente.</span>`;
 }
 
 // ================= TIMER =================
@@ -264,13 +249,11 @@ function renderQuestion(){
   ta.value = current;
 
   ta.addEventListener("paste", (e)=>{
-    incidents.pasteBlocked++; addIncident("paste_blocked", "textarea_paste");
+    incidents.pasteBlocked++; addIncident("paste_blocked","textarea_paste");
     e.preventDefault();
   });
 
-  ta.addEventListener("input", ()=>{
-    exam.answersMap[q.id] = ta.value;
-  });
+  ta.addEventListener("input", ()=>{ exam.answersMap[q.id] = ta.value; });
 }
 
 function buildAnswers(){
@@ -290,10 +273,7 @@ async function onStartClick(){
   $("submitMsg").textContent = "";
 
   const err = validateForm();
-  if(err){
-    $("startMsg").textContent = err;
-    return;
-  }
+  if(err){ $("startMsg").textContent = err; return; }
 
   candidate = buildCandidate();
 
@@ -304,12 +284,11 @@ async function onStartClick(){
 
   const file = $("cvFile").files[0];
   const base64 = await fileToBase64(file);
-  cvPayload = { name: file.name, mime: file.type || "application/octet-stream", base64, bytes: file.size };
+  cvPayload = { name:file.name, mime:file.type || "application/octet-stream", base64, bytes:file.size };
 
   const meta = await apiGet("meta", candidate.area);
   const totalSec = (meta.questionCount || 0) * PER_QUESTION_SEC;
 
-  // ✅ Guardar “lo que se ejecuta” si acepta
   pendingStart = async () => {
     wireSecurityOnce();
 
@@ -336,27 +315,23 @@ async function onStartClick(){
     window.scrollTo({ top: $("examCard").offsetTop - 10, behavior: "smooth" });
   };
 
-  // ✅ Mostrar modal SOLO aquí
   openModal(modalHtml(mmss(totalSec)));
 }
 
 async function onOkClick(){
   if(!exam || invalidated) return;
 
-  const q = exam.questions[idx];
   const ans = ($("answerBox")?.value || "").trim();
-
   if(!ans){
     $("submitMsg").innerHTML = "<span class='bad'>Debes responder antes de continuar.</span>";
     return;
   }
 
+  const q = exam.questions[idx];
   exam.answersMap[q.id] = ans;
   $("submitMsg").textContent = "";
 
-  const last = (idx === exam.questions.length - 1);
-
-  if(!last){
+  if(idx < exam.questions.length - 1){
     idx++;
     renderQuestion();
     return;
@@ -395,13 +370,11 @@ async function submitAll(isAuto, autoReason){
   });
 
   $("okBtn").disabled = true;
-
   $("submitMsg").innerHTML =
     "<span class='ok'>Tus respuestas serán remitidas satisfactoriamente al área encargada de LabCore Tech.</span>";
 }
 
 // ================= INIT =================
-// ✅ Enlazar TODO una sola vez, al cargar, para que los botones del modal SIEMPRE funcionen
 document.addEventListener("DOMContentLoaded", () => {
 
   $("startBtn").addEventListener("click", ()=> onStartClick().catch(e=>{
@@ -412,11 +385,9 @@ document.addEventListener("DOMContentLoaded", () => {
     $("submitMsg").innerHTML = `<span class="bad">${String(e?.message || e)}</span>`;
   }));
 
-  // Modal: X y Cancelar solo cierran
   $("modalCloseX").addEventListener("click", ()=> closeModal());
   $("cancelStartBtn").addEventListener("click", ()=> closeModal());
 
-  // Modal: Acepto ejecuta pendingStart
   $("confirmStartBtn").addEventListener("click", ()=> {
     closeModal();
     if(typeof pendingStart === "function"){

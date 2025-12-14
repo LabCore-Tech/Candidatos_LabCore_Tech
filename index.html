@@ -6,9 +6,11 @@
   <title>LabCore Tech | Evaluación</title>
   <link rel="stylesheet" href="src/css/styles.css" />
 </head>
+
 <body>
   <main class="wrap">
 
+    <!-- TOPBAR -->
     <header class="topbar">
       <div class="topbar-inner">
         <div class="brandline">
@@ -24,138 +26,119 @@
       </div>
     </header>
 
-    <!-- FORM -->
+    <!-- FORM CARD -->
     <section class="card" id="formCard">
       <h2>Datos del postulante</h2>
 
-      <div class="grid">
-        <label>
-          Nombre
-          <input id="firstName" type="text" autocomplete="given-name" required>
-        </label>
+      <div class="grid3">
+        <!-- fila 1 -->
+        <div class="field">
+          <label for="firstName">Nombre</label>
+          <input id="firstName" type="text" autocomplete="given-name" required />
+        </div>
 
-        <label>
-          Apellido
-          <input id="lastName" type="text" autocomplete="family-name" required>
-        </label>
-      </div>
+        <div class="field">
+          <label for="lastName">Apellido</label>
+          <input id="lastName" type="text" autocomplete="family-name" required />
+        </div>
 
-      <div class="grid single">
-        <label>
-          Cédula
-          <input id="cedula" type="text" inputmode="numeric" required>
-        </label>
+        <div class="field">
+          <label for="cedula">Cédula</label>
+          <input id="cedula" type="text" inputmode="numeric" autocomplete="off" required />
+        </div>
 
-        <label>
-          Área a concursar
-          <select id="area" required>
-            <option value="" selected>Selecciona el área…</option>
-            <option value="DEV">DEV (Desarrollo / Programación)</option>
-          </select>
-        </label>
-      </div>
+        <!-- fila 2 -->
+        <div class="field">
+          <label for="university">Universidad</label>
+          <input id="university" type="text" autocomplete="organization" required />
+        </div>
 
-      <div class="grid single">
-        <label>
-          Universidad
-          <input id="university" type="text" required>
-        </label>
-
-        <label>
-          Carrera
+        <div class="field">
+          <label for="career">Carrera</label>
           <select id="career" required>
-            <option value="" selected>Selecciona…</option>
-            <option value="Desarrollo de Software">Desarrollo de Software</option>
-            <option value="Ingeniería de Sistemas">Ingeniería de Sistemas</option>
+            <option value="">Selecciona...</option>
+            <option value="DESARROLLO_SOFTWARE">Desarrollo de Software</option>
+            <option value="ING_SISTEMAS">Ingeniería de Sistemas</option>
           </select>
-        </label>
-      </div>
+        </div>
 
-      <div class="grid single">
-        <label>
-          Semestre
+        <div class="field">
+          <label for="semester">Semestre</label>
           <select id="semester" required>
-            <option value="" selected>Selecciona…</option>
-            <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
-            <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
+            <option value="">Selecciona...</option>
+            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+            <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+            <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+            <option value="10">10</option>
           </select>
-        </label>
+        </div>
 
-        <label>
-          Cargo a aspirar
+        <!-- fila 3 (cargo ocupa 2 columnas para que se vea pro) -->
+        <div class="field span2">
+          <label for="role">Cargo a aspirar</label>
           <select id="role" required>
-            <option value="" selected>Selecciona…</option>
-            <option value="Auxiliar de Desarrollo">Auxiliar de Desarrollo</option>
-            <option value="Desarrollador">Desarrollador</option>
+            <option value="">Selecciona...</option>
+            <option value="AUX_DEV">Auxiliar de Desarrollo</option>
+            <option value="DEV">Desarrollador</option>
           </select>
-        </label>
+        </div>
+
+        <div class="field">
+          <label for="cvFile">Hoja de vida (PDF / DOC / DOCX)</label>
+          <input id="cvFile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required />
+          <div class="hint">Obligatorio. Máx. recomendado: 8 MB.</div>
+        </div>
       </div>
 
-      <div class="grid single">
-        <label class="filefield">
-          Hoja de vida (PDF / DOC / DOCX)
-          <input id="cvFile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required>
-          <small class="hint">Obligatorio. Máx. recomendado: 8 MB.</small>
-        </label>
-      </div>
-
-      <div class="row">
+      <div class="actions">
         <button id="startBtn" class="btn primary" type="button">Iniciar evaluación</button>
-        <span id="startMsg" class="hint"></span>
+        <div id="startMsg" class="msg"></div>
+      </div>
+    </section>
+
+    <!-- EXAM CARD -->
+    <section class="card hidden" id="examCard">
+      <div class="exam-head">
+        <div>
+          <h2>Preguntas</h2>
+          <div class="pill" id="pillLimit">Límite: --:--</div>
+        </div>
+
+        <div class="timer">
+          <div class="timer-pill" id="timer">--:--</div>
+        </div>
+      </div>
+
+      <div class="progress" id="progress">Pregunta 1 de 5</div>
+      <div id="questionBox" class="questionBox"></div>
+
+      <div class="actions">
+        <button id="okBtn" class="btn primary" type="button">OK</button>
+        <div id="submitMsg" class="msg"></div>
       </div>
 
       <div id="debugBox" class="debug hidden"></div>
     </section>
 
-    <!-- EXAM: 1 a la vez -->
-    <section id="examCard" class="card hidden">
-
-      <div class="row between">
-        <div class="exam-head">
-          <h2>Evaluación</h2>
-          <div id="progress" class="progress">Pregunta 1 de 1</div>
+    <!-- MODAL -->
+    <div id="infoModal" class="modal hidden" aria-hidden="true">
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-top">
+          <h3 id="modalTitle">Información antes de iniciar</h3>
+          <button id="modalCloseX" class="xbtn" type="button" aria-label="Cerrar">×</button>
         </div>
-        <span id="timer" class="pill timer-danger">--:--</span>
-      </div>
 
-      <div class="pills">
-        <span class="pill" id="pillLimit">Límite: --:--</span>
-      </div>
+        <div id="modalBody" class="modal-body"></div>
 
-      <div id="questionBox" class="question-box"></div>
-
-      <div class="row between">
-        <div class="nav">
-          <button id="okBtn" class="btn primary" type="button">OK</button>
+        <div class="modal-actions">
+          <button id="cancelStartBtn" class="btn ghost" type="button">Cancelar</button>
+          <button id="confirmStartBtn" class="btn primary" type="button">Acepto, continuar</button>
         </div>
-        <div class="nav">
-          <span id="submitMsg" class="hint"></span>
-        </div>
-      </div>
-    </section>
-
-    <footer class="foot">
-      <small>LabCore Tech · Uso interno</small>
-    </footer>
-
-  </main>
-
-  <!-- MODAL INFORMATIVO (solo se muestra al dar clic en Iniciar evaluación) -->
-  <div id="infoModal" class="modal hidden" aria-modal="true" role="dialog">
-    <div class="modal-card">
-      <div class="modal-top">
-        <div class="modal-title">Información antes de iniciar</div>
-        <button id="modalCloseX" class="modal-x" type="button" aria-label="Cerrar">×</button>
-      </div>
-
-      <div id="modalBody" class="modal-body"></div>
-
-      <div class="modal-actions">
-        <button id="cancelStartBtn" class="btn ghost" type="button">Cancelar</button>
-        <button id="confirmStartBtn" class="btn primary" type="button">Acepto, continuar</button>
       </div>
     </div>
-  </div>
+
+    <footer class="foot">LabCore Tech · Uso interno</footer>
+  </main>
 
   <script src="src/js/app.js"></script>
 </body>
