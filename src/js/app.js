@@ -2,218 +2,208 @@
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzHvvOQPnKd4ZJyk01dzooJEYKQ4c6-4OpVhRiWVk80XvsBV0r9IhXVNF2O0CeLmuPm/exec";
 const APP_TOKEN = "9fA2xQe7MZk4T8Rj3P0LwB1YhD5C6mSNaVUp";
 
-// ================= CONFIG =================
-const APPS_SCRIPT_URL = "PEGA_AQUI_TU_URL_DEL_WEB_APP"; // .../exec
-const APP_TOKEN = "TU_TOKEN_LARGO_Y_SEGURO";
-
 const PER_QUESTION_SEC = 90;
+const INVALIDATE_ON_TAB_LEAVE = true;
 
-// Seguridad
-const TAB_LEAVE_AUTOSUBMIT_THRESHOLD = 3;
-const BLOCK_COPY_PASTE = true;
-
-// LocalStorage keys
+// ================= STORAGE =================
 const LS_PREFIX = "labcore_eval";
-const LS_LOCK_KEY = (ced) => `${LS_PREFIX}:lock:${ced}`;
-const LS_DRAFT_KEY = (ced) => `${LS_PREFIX}:draft:${ced}`;
+const LS_LOCK_KEY   = (ced) => `${LS_PREFIX}:lock:${ced}`;
+const LS_CAND_KEY   = (ced) => `${LS_PREFIX}:candidate:${ced}`;
+const LS_ACTIVE_KEY = (ced) => `${LS_PREFIX}:active:${ced}`;
+const LS_DRAFT_KEY  = (ced) => `${LS_PREFIX}:draft:${ced}`;
 
 // ================= HELPERS =================
 const $ = (id) => document.getElementById(id);
 
-function showDebug(msg) {
-  const box = $("debugBox");
-  if (!box) return;
-  box.textContent = msg;
-  box.classList.remove("hidden");
-}
+function showDebug(msg){ const b=$("debugBox"); if(!b) return; b.textContent=msg; b.classList.remove("hidden"); }
+function clearDebug(){ const b=$("debugBox"); if(!b) return; b.textContent=""; b.classList.add("hidden"); }
 
-function clearDebug() {
-  const box = $("debugBox");
-  if (!box) return;
-  box.textContent = "";
-  box.classList.add("hidden");
-}
-
-function mmss(sec) {
+function mmss(sec){
   sec = Math.max(0, Math.floor(sec));
-  const mm = Math.floor(sec / 60);
-  const ss = sec % 60;
-  return `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+  const mm = Math.floor(sec/60);
+  const ss = sec%60;
+  return `${String(mm).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
 }
 
-function safeJsonParse(text, fallback) {
-  try { return JSON.parse(text); } catch { return fallback; }
+async function safe(fn){
+  try{ await fn(); }catch(e){ showDebug(String(e?.message||e)); console.error(e); }
 }
 
-async function safe(fn) {
-  try { await fn(); }
-  catch (e) {
-    showDebug(String(e?.message || e));
-    console.error(e);
-  }
-}
+function safeJsonParse(t, fb){ try{return JSON.parse(t);}catch{return fb;} }
 
 // ================= STATE =================
-let exam = null;
+let candidate = null;
+let exam = null;            // { area, questions[], answersMap{} }
+let idx = 0;
+
 let startedAt = null;
 let deadlineAt = null;
 let timerInt = null;
 let securityWired = false;
-let currentIndex = 0;
-let candidate = null;
+let invalidated = false;
 
+// solo para ti
 const incidents = {
-  total: 0,
-  tabLeaves: 0,
-  visibilityChanges: 0,
-  blurCount: 0,
-  copyAttempts: 0,
-  pasteAttempts: 0,
-  cutAttempts: 0,
-  keyBlocked: 0,
-  contextMenuBlocked: 0,
-  selectionBlocked: 0,
-  events: []
+  total:0,
+  visibilityChanges:0,
+  tabLeaves:0,
+  beforeUnload:0,
+  blurCount:0,
+  events:[]
 };
-
-function addIncident(type, detail) {
+function addIncident(type, detail){
   incidents.total++;
-  incidents.events.push({ type, detail, at: new Date().toISOString() });
-  if (incidents.events.length > 80) incidents.events.shift();
-}
-
-// ================= VALIDATION =================
-function validateCandidate() {
-  if (!$("firstName") || !$("lastName") || !$("cedula") || !$("area")) return "HTML incompleto (faltan campos).";
-  if ($("firstName").value.trim().length < 2) return "Nombre inválido.";
-  if ($("lastName").value.trim().length < 2) return "Apellido inválido.";
-  if ($("cedula").value.trim().length < 5) return "Cédula inválida.";
-  if (!$("area").value) return "Debe seleccionar el área a concursar.";
-  return null;
-}
-
-function getCandidateFromForm() {
-  const firstName = $("firstName").value.trim();
-  const lastName  = $("lastName").value.trim();
-  const cedula    = $("cedula").value.trim();
-  const area      = $("area").value.trim();
-  return { firstName, lastName, cedula, area, fullName: `${firstName} ${lastName}`.trim() };
+  incidents.events.push({type, detail, at:new Date().toISOString()});
+  if(incidents.events.length>80) incidents.events.shift();
 }
 
 // ================= API =================
-async function apiGet(mode, area) {
+async function apiGet(mode, area){
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set("mode", mode);
   url.searchParams.set("token", APP_TOKEN);
   url.searchParams.set("area", area);
 
-  const r = await fetch(url.toString(), { cache: "no-store" });
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok || !d.ok) throw new Error(d.error || "Error consultando servidor");
+  const r = await fetch(url.toString(), { cache:"no-store" });
+  const d = await r.json().catch(()=> ({}));
+  if(!r.ok || !d.ok) throw new Error(d.error || "Error consultando servidor");
   return d;
 }
 
-// ================= META TIME =================
-async function showTimeForArea(area) {
-  const msg = $("startMsg");
-  if (!msg) return;
-
-  msg.textContent = "";
-  if (!area) return;
-
-  const meta = await apiGet("meta", area);
-  const totalSec = (meta.questionCount || 0) * PER_QUESTION_SEC;
-
-  if (!meta.questionCount) {
-    msg.innerHTML = `<span class="bad">Área sin preguntas configuradas.</span>`;
-    return;
-  }
-  msg.innerHTML = `<span class="hint">Tiempo disponible: <b>${mmss(totalSec)}</b></span>`;
+// ================= VALIDATION =================
+function validateForm(){
+  if(!$("firstName")||!$("lastName")||!$("cedula")||!$("area")) return "Faltan campos en el HTML.";
+  if($("firstName").value.trim().length<2) return "Nombre inválido.";
+  if($("lastName").value.trim().length<2) return "Apellido inválido.";
+  if($("cedula").value.trim().length<5) return "Cédula inválida.";
+  if(!$("area").value) return "Selecciona el área a concursar.";
+  return null;
+}
+function getCandidate(){
+  const firstName = $("firstName").value.trim();
+  const lastName  = $("lastName").value.trim();
+  const cedula    = $("cedula").value.trim();
+  const area      = $("area").value.trim();
+  return { firstName, lastName, cedula, area, fullName:`${firstName} ${lastName}`.trim() };
 }
 
-// ================= MODAL =================
-function openModal(htmlBody, onConfirm) {
-  if (!$("startModal") || !$("modalBody") || !$("acceptRules") || !$("confirmStartBtn") || !$("cancelStartBtn")) {
-    throw new Error("HTML incompleto: falta el modal o sus elementos.");
-  }
-
-  $("modalBody").innerHTML = htmlBody;
-  $("startModal").classList.remove("hidden");
-  $("acceptRules").checked = false;
-  $("confirmStartBtn").disabled = true;
-
-  $("acceptRules").onchange = () => {
-    $("confirmStartBtn").disabled = !$("acceptRules").checked;
-  };
-
-  $("cancelStartBtn").onclick = () => {
-    $("startModal").classList.add("hidden");
-  };
-
-  $("confirmStartBtn").onclick = () => {
-    $("startModal").classList.add("hidden");
-    onConfirm();
-  };
+function isLocked(ced){ return localStorage.getItem(LS_LOCK_KEY(ced)) === "1"; }
+function lockCedula(ced, snapshot){
+  localStorage.setItem(LS_LOCK_KEY(ced), "1");
+  localStorage.setItem(LS_CAND_KEY(ced), JSON.stringify(snapshot));
 }
 
-function rulesHtml(totalTimeStr) {
+function openModal(html, onCancel, onConfirm){
+  const modal=$("infoModal"), body=$("modalBody");
+  if(!modal||!body) throw new Error("No existe el modal en el HTML.");
+  body.innerHTML = html;
+  modal.classList.remove("hidden");
+
+  $("cancelStartBtn").onclick = ()=>{ modal.classList.add("hidden"); onCancel && onCancel(); };
+  $("confirmStartBtn").onclick = ()=>{ modal.classList.add("hidden"); onConfirm && onConfirm(); };
+}
+
+function infoHtml(totalStr){
   return `
     <div>
-      Esta evaluación tiene una duración máxima de <b>${totalTimeStr}</b> y debe realizarse en una sola sesión continua.
+      Esta prueba tiene una duración máxima de <b>${totalStr}</b>.
+      Se recomienda destinar este tiempo completo para resolver la evaluación.
       <ul>
-        <li>Una vez iniciada, la evaluación no puede reiniciarse.</li>
-        <li>Es importante disponer del tiempo completo antes de comenzar.</li>
-        <li>Evita recargar la página o cerrar la ventana durante la evaluación.</li>
-        <li>Para preservar la integridad del proceso, una interrupción de la sesión puede invalidar la evaluación.</li>
+        <li>La evaluación se realiza en una sola sesión continua.</li>
+        <li>Si la página se recarga, se cierra la ventana o se interrumpe la sesión, la evaluación no estará disponible nuevamente.</li>
       </ul>
-      Al continuar, confirmas que comprendes estas condiciones y deseas iniciar la evaluación.
     </div>
   `;
 }
 
-// ================= LOCK & DRAFT =================
-function isLocked(cedula) {
-  return localStorage.getItem(LS_LOCK_KEY(cedula)) === "1";
+// ================= TIMER =================
+function startTimer(){
+  timerInt = setInterval(()=>{
+    const rem = Math.floor((deadlineAt - Date.now())/1000);
+    if($("timer")) $("timer").textContent = mmss(rem);
+    if(rem<=0){
+      stopTimer();
+      autoSubmit("Tiempo agotado");
+    }
+  },250);
 }
-function lockCandidate(cedula, snapshot) {
-  localStorage.setItem(LS_LOCK_KEY(cedula), "1");
-  localStorage.setItem(`${LS_PREFIX}:who:${cedula}`, JSON.stringify(snapshot));
+function stopTimer(){ if(timerInt) clearInterval(timerInt); timerInt=null; }
+
+// ================= INVALIDATE =================
+function invalidate(reason){
+  if(invalidated) return;
+  invalidated = true;
+  addIncident("invalidated", reason);
+
+  if(candidate?.cedula){
+    lockCedula(candidate.cedula, { ...candidate, invalidatedAtISO:new Date().toISOString(), reason });
+    localStorage.removeItem(LS_DRAFT_KEY(candidate.cedula));
+    localStorage.removeItem(LS_ACTIVE_KEY(candidate.cedula));
+  }
+
+  stopTimer();
+  if($("okBtn")) $("okBtn").disabled = true;
+
+  if($("submitMsg")){
+    $("submitMsg").innerHTML = `<span class="bad">La sesión fue interrumpida. La evaluación no está disponible nuevamente.</span>`;
+  }
 }
 
-function saveDraft() {
-  if (!candidate || !exam) return;
-  const payload = {
-    candidate,
-    currentIndex,
-    answers: collectAnswersSoft(),
-    savedAtISO: new Date().toISOString()
-  };
+function wireSecurity(){
+  if(securityWired) return;
+  securityWired = true;
+
+  if(!INVALIDATE_ON_TAB_LEAVE) return;
+
+  document.addEventListener("visibilitychange", ()=>{
+    incidents.visibilityChanges++;
+    if(document.hidden){
+      incidents.tabLeaves++;
+      addIncident("tab_leave", `hidden (${incidents.tabLeaves})`);
+      invalidate("cambio de pestaña / ventana");
+    }
+  });
+
+  window.addEventListener("blur", ()=>{
+    incidents.blurCount++;
+    addIncident("window_blur", `blur (${incidents.blurCount})`);
+  });
+
+  window.addEventListener("beforeunload", (e)=>{
+    if(!exam) return;
+    incidents.beforeUnload++;
+    addIncident("beforeunload", "attempt_leave_or_refresh");
+    invalidate("recarga / cierre de ventana");
+    e.preventDefault();
+    e.returnValue = "";
+  });
+}
+
+// ================= DRAFT =================
+function saveDraft(){
+  if(!candidate||!exam) return;
+  const payload = { candidate, idx, answers: collectAnswers(), savedAtISO:new Date().toISOString() };
   localStorage.setItem(LS_DRAFT_KEY(candidate.cedula), JSON.stringify(payload));
 }
-function loadDraftIfAny() {
-  if (!candidate) return null;
+function loadDraft(){
+  if(!candidate) return null;
   const raw = localStorage.getItem(LS_DRAFT_KEY(candidate.cedula));
-  if (!raw) return null;
+  if(!raw) return null;
   return safeJsonParse(raw, null);
 }
 
-// ================= RENDER ONE QUESTION =================
-function renderQuestionAt(index) {
-  currentIndex = index;
-  const n = exam.questions.length;
-  const q = exam.questions[currentIndex];
+// ================= RENDER 1 QUESTION =================
+function renderCurrent(){
+  const q = exam.questions[idx];
+  const total = exam.questions.length;
 
-  if ($("progress")) $("progress").textContent = `Pregunta ${currentIndex + 1} de ${n}`;
-  if ($("prevBtn")) $("prevBtn").disabled = currentIndex === 0;
-  if ($("nextBtn")) $("nextBtn").disabled = currentIndex === n - 1;
+  if($("progress")) $("progress").textContent = `Pregunta ${idx+1} de ${total}`;
+  if($("okBtn")) $("okBtn").textContent = (idx === total-1) ? "OK" : "OK";
 
-  const box = $("questionBox");
-  if (!box) throw new Error("HTML incompleto: falta #questionBox.");
+  const existing = exam.answersMap[q.id] || "";
 
-  const existing = (exam.answersMap[q.id] || "");
-
-  box.innerHTML = `
-    <div class="qtitle">${currentIndex + 1}. ${q.prompt}</div>
+  $("questionBox").innerHTML = `
+    <div class="qtitle">${idx+1}. ${q.prompt}</div>
     <div class="qmeta">Módulo: ${q.moduleName}</div>
     <div class="qanswer">
       <textarea id="answerBox" placeholder="Escribe tu respuesta..."></textarea>
@@ -222,257 +212,193 @@ function renderQuestionAt(index) {
 
   const ta = $("answerBox");
   ta.value = existing;
-  ta.addEventListener("input", () => {
+
+  ta.addEventListener("input", ()=>{
     exam.answersMap[q.id] = ta.value;
     saveDraft();
   });
 }
 
-function collectAnswersSoft() {
+function collectAnswers(){
   return exam.questions.map(q => ({
-    id: q.id,
-    module: q.moduleName,
-    moduleId: q.moduleId,
-    prompt: q.prompt,
-    answer: (exam.answersMap[q.id] || "").trim()
+    id:q.id,
+    module:q.moduleName,
+    moduleId:q.moduleId,
+    prompt:q.prompt,
+    answer:(exam.answersMap[q.id]||"").trim()
   }));
 }
 
-function allAnswered() {
-  return collectAnswersSoft().every(a => !!a.answer);
-}
-
-// ================= TIMER =================
-function startTimer() {
-  timerInt = setInterval(() => {
-    const remaining = Math.floor((deadlineAt - Date.now()) / 1000);
-    if ($("timer")) $("timer").textContent = mmss(remaining);
-
-    if (remaining <= 0) {
-      stopTimer();
-      autoSubmit("Tiempo agotado");
-    }
-  }, 250);
-}
-function stopTimer() {
-  if (timerInt) clearInterval(timerInt);
-  timerInt = null;
-}
-
-// ================= SECURITY =================
-function setupSecurityOnce() {
-  if (securityWired) return;
-  securityWired = true;
-
-  if (BLOCK_COPY_PASTE) {
-    document.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      incidents.contextMenuBlocked++;
-      addIncident("contextmenu_blocked", "right click");
-    });
-
-    document.addEventListener("copy", (e) => {
-      e.preventDefault();
-      incidents.copyAttempts++;
-      addIncident("copy_blocked", "copy");
-    });
-
-    document.addEventListener("paste", (e) => {
-      e.preventDefault();
-      incidents.pasteAttempts++;
-      addIncident("paste_blocked", "paste");
-    });
-
-    document.addEventListener("cut", (e) => {
-      e.preventDefault();
-      incidents.cutAttempts++;
-      addIncident("cut_blocked", "cut");
-    });
-
-    document.addEventListener("keydown", (e) => {
-      const key = (e.key || "").toLowerCase();
-      const ctrl = e.ctrlKey || e.metaKey;
-      if (ctrl && ["c","v","x","a"].includes(key)) {
-        e.preventDefault();
-        incidents.keyBlocked++;
-        addIncident("key_blocked", `ctrl+${key}`);
-      }
-    }, true);
-
-    document.addEventListener("selectstart", (e) => {
-      e.preventDefault();
-      incidents.selectionBlocked++;
-      addIncident("selection_blocked", "selectstart");
-    });
-  }
-
-  document.addEventListener("visibilitychange", () => {
-    incidents.visibilityChanges++;
-    if (document.hidden) {
-      incidents.tabLeaves++;
-      addIncident("tab_leave", `hidden (${incidents.tabLeaves})`);
-      if (incidents.tabLeaves >= TAB_LEAVE_AUTOSUBMIT_THRESHOLD) {
-        autoSubmit("Interrupción de sesión detectada");
-      }
-    }
-  });
-
-  window.addEventListener("blur", () => {
-    incidents.blurCount++;
-    addIncident("window_blur", `blur (${incidents.blurCount})`);
-  });
-
-  window.addEventListener("beforeunload", (e) => {
-    if (!exam) return;
-    addIncident("beforeunload", "attempted_leave");
-    e.preventDefault();
-    e.returnValue = "";
-  });
-}
-
 // ================= SUBMIT =================
-async function submitAnswers(isAuto=false, autoReason="") {
-  if (!exam || !candidate) return;
+async function submitAll(isAuto=false, autoReason=""){
+  if(!exam || !candidate || invalidated) return;
 
-  if (!isAuto && !allAnswered()) {
-    if ($("submitMsg")) $("submitMsg").innerHTML = `<span class="bad">Faltan respuestas.</span>`;
+  const answers = collectAnswers();
+  if(!isAuto && answers.some(a=>!a.answer)){
+    if($("submitMsg")) $("submitMsg").innerHTML = `<span class="bad">Falta responder una o más preguntas.</span>`;
     return;
   }
 
   const payload = {
     token: APP_TOKEN,
     candidate,
-    meta: {
+    meta:{
       startedAtISO: startedAt ? new Date(startedAt).toISOString() : null,
       submittedAtISO: new Date().toISOString(),
-      durationSec: startedAt ? Math.floor((Date.now() - startedAt) / 1000) : null,
+      durationSec: startedAt ? Math.floor((Date.now()-startedAt)/1000) : null,
       isAutoSubmit: isAuto,
       autoReason: autoReason || null,
       userAgent: navigator.userAgent
     },
     incidents,
-    answers: collectAnswersSoft()
+    answers
   };
 
-  if ($("submitBtn")) $("submitBtn").disabled = true;
-  if ($("startBtn")) $("startBtn").disabled = true;
+  if($("okBtn")) $("okBtn").disabled = true;
+  if($("submitMsg")) $("submitMsg").textContent = "";
 
   const res = await fetch(APPS_SCRIPT_URL, {
-    method: "POST",
-    headers: { "Content-Type":"application/json" },
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
     body: JSON.stringify(payload)
   });
 
   const data = await res.json().catch(()=> ({}));
-  if (!res.ok || !data.ok) {
-    if ($("submitBtn")) $("submitBtn").disabled = false;
+  if(!res.ok || !data.ok){
+    if($("okBtn")) $("okBtn").disabled = false;
     throw new Error(data.error || "Error enviando respuestas");
   }
 
   stopTimer();
   localStorage.removeItem(LS_DRAFT_KEY(candidate.cedula));
+  localStorage.removeItem(LS_ACTIVE_KEY(candidate.cedula));
 
-  if ($("submitMsg")) {
-    $("submitMsg").innerHTML = `<span class="ok">Tus respuestas fueron registradas correctamente. LabCore Tech revisará la información.</span>`;
+  // Bloquea para no repetir
+  lockCedula(candidate.cedula, { ...candidate, submittedAtISO:new Date().toISOString() });
+
+  if($("submitMsg")){
+    $("submitMsg").innerHTML = `<span class="ok">Tus respuestas serán remitidas satisfactoriamente al área encargada de LabCore Tech.</span>`;
   }
 }
 
-async function autoSubmit(reason) {
-  if (!$("submitBtn") || $("submitBtn").disabled) return;
-  if ($("submitMsg")) $("submitMsg").innerHTML = `<span class="bad">${reason}. Enviando…</span>`;
-  await submitAnswers(true, reason);
+async function autoSubmit(reason){
+  if($("submitMsg")) $("submitMsg").innerHTML = `<span class="bad">${reason}. Procesando…</span>`;
+  await submitAll(true, reason);
 }
 
-// ================= START FLOW =================
-async function beginExamFlow() {
+// ================= START =================
+async function startFlow(){
   clearDebug();
+  if($("startMsg")) $("startMsg").textContent = "";
 
-  const msg = $("startMsg");
-  if (msg) msg.textContent = "";
-
-  const err = validateCandidate();
-  if (err) {
-    if (msg) msg.innerHTML = `<span class="bad">${err}</span>`;
+  const err = validateForm();
+  if(err){
+    $("startMsg").innerHTML = `<span class="bad">${err}</span>`;
     return;
   }
 
-  candidate = getCandidateFromForm();
+  candidate = getCandidate();
 
-  if (isLocked(candidate.cedula)) {
-    if (msg) msg.innerHTML = `<span class="bad">No es posible iniciar una nueva evaluación para esta cédula desde este dispositivo.</span>`;
+  if(isLocked(candidate.cedula)){
+    $("startMsg").innerHTML = `<span class="bad">Esta evaluación ya no está disponible para esta cédula en este dispositivo.</span>`;
     return;
   }
 
   const meta = await apiGet("meta", candidate.area);
   const totalSec = (meta.questionCount || 0) * PER_QUESTION_SEC;
 
-  openModal(rulesHtml(mmss(totalSec)), async () => {
-    lockCandidate(candidate.cedula, { ...candidate, lockedAtISO: new Date().toISOString() });
+  // Popup informativo SOLO aquí
+  openModal(
+    infoHtml(mmss(totalSec)),
+    ()=>{},
+    async ()=>{
+      // Continuar => inicia
+      localStorage.setItem(LS_CAND_KEY(candidate.cedula), JSON.stringify(candidate));
+      localStorage.setItem(LS_ACTIVE_KEY(candidate.cedula), JSON.stringify({ startedAtISO:new Date().toISOString() }));
 
-    const out = await apiGet("questions", candidate.area);
+      const out = await apiGet("questions", candidate.area);
 
-    exam = {
-      area: out.area,
-      questions: out.questions || [],
-      answersMap: {}
-    };
+      exam = { area: out.area, questions: out.questions || [], answersMap:{} };
+      if(!exam.questions.length){
+        $("startMsg").innerHTML = `<span class="bad">Área sin preguntas disponibles.</span>`;
+        return;
+      }
 
-    if (!exam.questions.length) {
-      if (msg) msg.innerHTML = `<span class="bad">Área sin preguntas disponibles.</span>`;
-      return;
+      // muestra examen
+      $("examCard").classList.remove("hidden");
+
+      startedAt = Date.now();
+      deadlineAt = startedAt + totalSec*1000;
+      $("pillLimit").textContent = `Límite: ${mmss(totalSec)}`;
+      $("timer").textContent = mmss(totalSec);
+
+      // seguridad tras iniciar (como pediste)
+      wireSecurity();
+      startTimer();
+
+      // carga draft
+      const draft = loadDraft();
+      if(draft && Array.isArray(draft.answers)){
+        draft.answers.forEach(a=>{ if(a?.id) exam.answersMap[a.id]=a.answer||""; });
+        idx = Math.min(Math.max(draft.idx||0,0), exam.questions.length-1);
+      } else {
+        idx = 0;
+      }
+
+      renderCurrent();
+      saveDraft();
+
+      $("startMsg").innerHTML = `<span class="ok">Evaluación iniciada.</span>`;
+      window.scrollTo({ top: $("examCard").offsetTop - 10, behavior:"smooth" });
     }
-
-    const draft = loadDraftIfAny();
-    if (draft && Array.isArray(draft.answers)) {
-      draft.answers.forEach(a => { if (a?.id) exam.answersMap[a.id] = a.answer || ""; });
-      currentIndex = Math.min(Math.max(draft.currentIndex || 0, 0), exam.questions.length - 1);
-    } else {
-      currentIndex = 0;
-    }
-
-    if ($("examCard")) $("examCard").classList.remove("hidden");
-
-    startedAt = Date.now();
-    deadlineAt = startedAt + totalSec * 1000;
-
-    if ($("pillLimit")) $("pillLimit").textContent = `Límite: ${mmss(totalSec)}`;
-    if ($("timer")) $("timer").textContent = mmss(totalSec);
-
-    setupSecurityOnce();
-    startTimer();
-
-    renderQuestionAt(currentIndex);
-    saveDraft();
-
-    if (msg) msg.innerHTML = `<span class="ok">Evaluación iniciada.</span>`;
-    window.scrollTo({ top: $("examCard").offsetTop - 10, behavior: "smooth" });
-  });
+  );
 }
 
-// ================= INIT BINDINGS =================
+// ================= OK BUTTON (1x1) =================
+async function onOk(){
+  if(!exam || invalidated) return;
+
+  const q = exam.questions[idx];
+  const ans = ($("answerBox")?.value || "").trim();
+  exam.answersMap[q.id] = ans;
+  saveDraft();
+
+  // requiere respuesta para avanzar
+  if(!ans){
+    if($("submitMsg")) $("submitMsg").innerHTML = `<span class="bad">Debes responder antes de continuar.</span>`;
+    return;
+  }
+
+  $("submitMsg").textContent = "";
+
+  const last = (idx === exam.questions.length - 1);
+  if(!last){
+    idx++;
+    renderCurrent();
+    return;
+  }
+
+  // último OK => envía todo
+  await submitAll(false, "");
+}
+
+// ================= INIT =================
 (function init(){
   const area = $("area");
   const startBtn = $("startBtn");
 
-  if (!area || !startBtn) {
+  if(!area || !startBtn){
     showDebug("No se encontró #area o #startBtn. Revisa que el index.html sea el correcto.");
     return;
   }
 
-  area.addEventListener("change", () => safe(() => showTimeForArea(area.value)));
-  safe(() => showTimeForArea(area.value));
+  area.addEventListener("change", ()=> safe(()=> apiGet("meta", area.value).then(meta=>{
+    const totalSec = (meta.questionCount||0) * PER_QUESTION_SEC;
+    $("startMsg").innerHTML = area.value ? `<span class="hint">Tiempo disponible: <b>${mmss(totalSec)}</b></span>` : "";
+  })));
 
-  startBtn.addEventListener("click", () => safe(beginExamFlow));
+  startBtn.addEventListener("click", ()=> safe(startFlow));
 
-  const prevBtn = $("prevBtn");
-  const nextBtn = $("nextBtn");
-  const submitBtn = $("submitBtn");
-
-  if (prevBtn) prevBtn.addEventListener("click", () => { if (exam && currentIndex > 0) renderQuestionAt(currentIndex - 1); });
-  if (nextBtn) nextBtn.addEventListener("click", () => { if (exam && currentIndex < exam.questions.length - 1) renderQuestionAt(currentIndex + 1); });
-
-  if (submitBtn) submitBtn.addEventListener("click", () => safe(async () => {
-    if ($("submitMsg")) $("submitMsg").textContent = "";
-    await submitAnswers(false, "");
-  }));
+  const okBtn = $("okBtn");
+  if(okBtn) okBtn.addEventListener("click", ()=> safe(onOk));
 })();

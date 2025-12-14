@@ -9,7 +9,6 @@
 <body>
   <main class="wrap">
 
-    <!-- TOPBAR PRO -->
     <header class="topbar">
       <div class="topbar-inner">
         <div class="brandline">
@@ -26,7 +25,7 @@
     </header>
 
     <!-- DATOS -->
-    <section class="card">
+    <section class="card" id="formCard">
       <h2>Datos del postulante</h2>
 
       <div class="grid">
@@ -61,16 +60,15 @@
         <span id="startMsg" class="hint"></span>
       </div>
 
-      <!-- Debug (solo para ti). Si no lo quieres luego, lo borras -->
       <div id="debugBox" class="debug hidden"></div>
     </section>
 
-    <!-- EXAMEN (UNA PREGUNTA A LA VEZ) -->
+    <!-- EXAMEN 1x1 -->
     <section id="examCard" class="card hidden">
 
       <div class="row between">
         <div class="exam-head">
-          <h2>Preguntas</h2>
+          <h2>Evaluación</h2>
           <div id="progress" class="progress">Pregunta 1 de 1</div>
         </div>
         <span id="timer" class="pill timer-danger">--:--</span>
@@ -84,12 +82,10 @@
 
       <div class="row between">
         <div class="nav">
-          <button id="prevBtn" class="btn ghost" type="button">Anterior</button>
-          <button id="nextBtn" class="btn ghost" type="button">Siguiente</button>
+          <button id="okBtn" class="btn primary" type="button">OK</button>
         </div>
 
         <div class="nav">
-          <button id="submitBtn" class="btn primary" type="button">Finalizar y enviar</button>
           <span id="submitMsg" class="hint"></span>
         </div>
       </div>
@@ -101,21 +97,15 @@
 
   </main>
 
-  <!-- MODAL (CONDICIONES) -->
-  <div id="startModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <!-- POPUP INFORMATIVO -->
+  <div id="infoModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal-card">
-      <div id="modalTitle" class="modal-title">Condiciones de la evaluación</div>
-
+      <div id="modalTitle" class="modal-title">Información antes de iniciar</div>
       <div id="modalBody" class="modal-body"></div>
-
-      <label class="modal-check">
-        <input id="acceptRules" type="checkbox">
-        <span>He leído y acepto las condiciones.</span>
-      </label>
 
       <div class="modal-actions">
         <button id="cancelStartBtn" class="btn ghost" type="button">Cancelar</button>
-        <button id="confirmStartBtn" class="btn primary" type="button" disabled>Continuar</button>
+        <button id="confirmStartBtn" class="btn primary" type="button">Continuar</button>
       </div>
     </div>
   </div>
