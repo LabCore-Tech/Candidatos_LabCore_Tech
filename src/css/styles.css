@@ -93,7 +93,7 @@ textarea{min-height:160px;resize:vertical;width:100%}
 .hint{font-size:13px;color:var(--muted)}
 .ok{color:var(--ok)}
 .bad{color:var(--bad)}
-.hidden{display:none}
+.hidden{display:none !important;}
 .foot{margin-top:18px;color:var(--muted)}
 
 .exam-head{display:flex;flex-direction:column;gap:4px}

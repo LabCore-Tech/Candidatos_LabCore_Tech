@@ -75,11 +75,13 @@ const incidents = {
   beforeUnload:0,
   events:[]
 };
+
 function addIncident(type, detail){
   incidents.total++;
   incidents.events.push({ type, detail, at:new Date().toISOString() });
   if(incidents.events.length > 120) incidents.events.shift();
 }
+
 function lockCedula(ced){
   localStorage.setItem(LS_LOCK(ced), "1");
 }
@@ -95,6 +97,7 @@ function openModal(html){
 function closeModal(){
   $("infoModal").classList.add("hidden");
 }
+
 function modalHtml(totalStr){
   return `
     <div>
@@ -107,6 +110,9 @@ function modalHtml(totalStr){
     </div>
   `;
 }
+
+// ✅ NUEVO: función “pendiente” que se ejecuta SOLO si el usuario acepta el modal
+let pendingStart = null;
 
 // ================= VALIDATION =================
 function validateForm(){
@@ -157,7 +163,6 @@ function wireSecurityOnce(){
   if(securityWired) return;
   securityWired = true;
 
-  // Bloquear copiar/pegar/cortar + click derecho
   document.addEventListener("copy", (e)=>{
     incidents.copyBlocked++; addIncident("copy_blocked", "copy");
     e.preventDefault();
@@ -175,13 +180,10 @@ function wireSecurityOnce(){
     e.preventDefault();
   });
 
-  // Registrar intentos “comunes” (no se puede impedir screenshots reales del OS)
   document.addEventListener("keydown", (e)=>{
-    // PrintScreen
     if(e.key === "PrintScreen"){
       incidents.printScreen++; addIncident("printscreen", "PrintScreen");
     }
-    // Ctrl+P / Cmd+P
     const isMac = navigator.platform.toLowerCase().includes("mac");
     const ctrlOrCmd = isMac ? e.metaKey : e.ctrlKey;
     if(ctrlOrCmd && (e.key.toLowerCase() === "p")){
@@ -190,7 +192,6 @@ function wireSecurityOnce(){
     }
   });
 
-  // Salida / pestaña
   document.addEventListener("visibilitychange", ()=>{
     incidents.visibilityChanges++;
     addIncident("visibilitychange", document.hidden ? "hidden" : "visible");
@@ -198,12 +199,12 @@ function wireSecurityOnce(){
       invalidate("Cambio de pestaña/ventana (sesión interrumpida)");
     }
   });
+
   window.addEventListener("blur", ()=>{
     incidents.blurCount++;
     addIncident("window_blur", "blur");
   });
 
-  // Evitar refrescar / cerrar (y registrar)
   window.addEventListener("beforeunload", (e)=>{
     if(!exam) return;
     incidents.beforeUnload++;
@@ -262,7 +263,6 @@ function renderQuestion(){
   const ta = $("answerBox");
   ta.value = current;
 
-  // Bloquear pegar específicamente dentro del textarea
   ta.addEventListener("paste", (e)=>{
     incidents.pasteBlocked++; addIncident("paste_blocked", "textarea_paste");
     e.preventDefault();
@@ -302,26 +302,15 @@ async function onStartClick(){
     return;
   }
 
-  // leer CV antes (obligatorio)
   const file = $("cvFile").files[0];
   const base64 = await fileToBase64(file);
   cvPayload = { name: file.name, mime: file.type || "application/octet-stream", base64, bytes: file.size };
 
-  // calcular tiempo
   const meta = await apiGet("meta", candidate.area);
   const totalSec = (meta.questionCount || 0) * PER_QUESTION_SEC;
 
-  // Mostrar popup SOLO aquí
-  openModal(modalHtml(mmss(totalSec)));
-
-  // handlers popup
-  $("modalCloseX").onclick = () => closeModal(); // X: cierra sin cambios
-  $("cancelStartBtn").onclick = () => closeModal(); // cancelar: cierra sin cambios
-
-  $("confirmStartBtn").onclick = async () => {
-    closeModal();
-
-    // desde aquí inicia evaluación
+  // ✅ Guardar “lo que se ejecuta” si acepta
+  pendingStart = async () => {
     wireSecurityOnce();
 
     const qdata = await apiGet("questions", candidate.area);
@@ -346,6 +335,9 @@ async function onStartClick(){
     startTimer();
     window.scrollTo({ top: $("examCard").offsetTop - 10, behavior: "smooth" });
   };
+
+  // ✅ Mostrar modal SOLO aquí
+  openModal(modalHtml(mmss(totalSec)));
 }
 
 async function onOkClick(){
@@ -378,7 +370,6 @@ async function onOkClick(){
 async function submitAll(isAuto, autoReason){
   if(!exam || !candidate) return;
 
-  // bloquear “reintentos”
   lockCedula(candidate.cedula);
 
   const payload = {
@@ -397,7 +388,6 @@ async function submitAll(isAuto, autoReason){
     cv: cvPayload
   };
 
-  // enviar
   await fetch(APPS_SCRIPT_URL, {
     method: "POST",
     headers: { "Content-Type":"application/json" },
@@ -411,10 +401,27 @@ async function submitAll(isAuto, autoReason){
 }
 
 // ================= INIT =================
-$("startBtn").addEventListener("click", ()=> onStartClick().catch(e=>{
-  showDebug(String(e?.message || e));
-}));
+// ✅ Enlazar TODO una sola vez, al cargar, para que los botones del modal SIEMPRE funcionen
+document.addEventListener("DOMContentLoaded", () => {
 
-$("okBtn").addEventListener("click", ()=> onOkClick().catch(e=>{
-  $("submitMsg").innerHTML = `<span class="bad">${String(e?.message || e)}</span>`;
-}));
+  $("startBtn").addEventListener("click", ()=> onStartClick().catch(e=>{
+    showDebug(String(e?.message || e));
+  }));
+
+  $("okBtn").addEventListener("click", ()=> onOkClick().catch(e=>{
+    $("submitMsg").innerHTML = `<span class="bad">${String(e?.message || e)}</span>`;
+  }));
+
+  // Modal: X y Cancelar solo cierran
+  $("modalCloseX").addEventListener("click", ()=> closeModal());
+  $("cancelStartBtn").addEventListener("click", ()=> closeModal());
+
+  // Modal: Acepto ejecuta pendingStart
+  $("confirmStartBtn").addEventListener("click", ()=> {
+    closeModal();
+    if(typeof pendingStart === "function"){
+      pendingStart().catch(e => showDebug(String(e?.message || e)));
+    }
+  });
+
+});
