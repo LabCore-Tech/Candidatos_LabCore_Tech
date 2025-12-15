@@ -119,9 +119,9 @@ function modalHtml(totalSec){
       <p class="legal-note" style="margin-top:12px; font-size:0.85rem; color:#6b7280;">
         Al continuar con esta evaluación, autorizas el tratamiento de tus datos personales
         conforme a la Ley 1581 de 2012, el Decreto 1377 de 2013 y la
-        <a href="/politica-datos.html" target="_blank" rel="noopener noreferrer">
-          Política de Tratamiento de Datos Personales
-        </a>
+        <a href="./politica-datos.html" target="_blank" rel="noopener noreferrer">
+		  Política de Tratamiento de Datos Personales
+		</a>
         de <strong>LabCore Tech</strong>.
       </p>
     </div>
