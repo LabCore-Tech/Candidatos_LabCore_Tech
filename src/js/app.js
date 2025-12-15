@@ -308,10 +308,12 @@ async function flushQueue(){
   for(const item of q){
     try{
       await fetch(APPS_SCRIPT_URL, {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify(item.payload)
-      });
+		  method: "POST",
+		  // IMPORTANTE: text/plain evita preflight y elimina el “Failed to fetch”
+		  headers: { "Content-Type":"text/plain;charset=utf-8" },
+		  body: JSON.stringify(payload)
+		});
+
     }catch{
       remaining.push(item);
     }
