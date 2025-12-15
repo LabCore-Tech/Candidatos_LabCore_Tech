@@ -9,7 +9,7 @@
 <body>
   <main class="wrap">
 
-    <!-- TOPBAR -->
+    <!-- TOPBAR PRO -->
     <header class="topbar">
       <div class="topbar-inner">
         <div class="brandline">
@@ -29,116 +29,114 @@
     <section id="formCard" class="card">
       <h2>Datos del postulante</h2>
 
-      <div class="grid3">
+      <div class="grid-3">
         <div class="field">
-          <label>Nombre</label>
-          <input id="firstName" type="text" autocomplete="given-name" placeholder="Ej. Julian" />
-        </div>
-        <div class="field">
-          <label>Apellido</label>
-          <input id="lastName" type="text" autocomplete="family-name" placeholder="Ej. Ramírez" />
-        </div>
-        <div class="field">
-          <label>Cédula</label>
-          <input id="cedula" type="text" inputmode="numeric" placeholder="Ej. 123456789" />
+          <label for="firstName">Nombre</label>
+          <input id="firstName" type="text" autocomplete="given-name" required>
         </div>
 
         <div class="field">
-          <label>Universidad</label>
-          <input id="university" type="text" placeholder="Ej. UNICUCES" />
+          <label for="lastName">Apellido</label>
+          <input id="lastName" type="text" autocomplete="family-name" required>
         </div>
+
         <div class="field">
-          <label>Carrera</label>
-          <select id="career">
-            <option value="">Selecciona...</option>
-            <option>Ingeniería de Sistemas</option>
-            <option>Ingeniería de Software</option>
-            <option>Tecnología en Sistemas</option>
-            <option>Otra</option>
+          <label for="cedula">Cédula</label>
+          <input id="cedula" type="text" inputmode="numeric" autocomplete="off" required>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="field">
+          <label for="university">Universidad</label>
+          <input id="university" type="text" autocomplete="organization" required>
+        </div>
+
+        <div class="field">
+          <label for="career">Carrera</label>
+          <select id="career" required>
+            <option value="" selected disabled>Selecciona…</option>
+            <option value="Desarrollo de software">Desarrollo de software</option>
+            <option value="Ingeniería de sistemas">Ingeniería de sistemas</option>
           </select>
         </div>
+
         <div class="field">
-          <label>Semestre</label>
-          <select id="semester">
-            <option value="">Selecciona...</option>
+          <label for="semester">Semestre</label>
+          <select id="semester" required>
+            <option value="" selected disabled>Selecciona…</option>
             <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
             <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
           </select>
         </div>
+      </div>
 
-        <div class="field span3">
-          <label>Cargo a aspirar</label>
-          <select id="role">
-            <option value="">Selecciona...</option>
-            <option>Auxiliar de Desarrollo</option>
-            <option>Desarrollador</option>
+      <div class="grid-3">
+        <div class="field">
+          <label for="role">Cargo a aspirar</label>
+          <select id="role" required>
+            <option value="" selected disabled>Selecciona…</option>
+            <option value="Auxiliar de desarrollo">Auxiliar de desarrollo</option>
+            <option value="Desarrollador">Desarrollador</option>
           </select>
         </div>
 
-        <div class="field span3">
-          <label>Hoja de vida (PDF / DOC / DOCX) <span class="hint">(Máx. 8 MB)</span></label>
-          <input id="cvFile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+        <div class="field">
+          <label for="cvFile">Hoja de vida (PDF/DOC/DOCX)</label>
+          <input id="cvFile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required>
+          <small class="hint">Obligatorio. Tamaño recomendado: hasta 8 MB.</small>
         </div>
 
-        <div class="field span3 checkboxline">
-          <label class="checkwrap">
-            <input id="privacyAccept" type="checkbox" />
-            <span>
-              Acepto la <a href="politica-datos.html" target="_blank" rel="noopener">Política de tratamiento de datos</a>
-            </span>
+        <div class="field actions">
+          <button id="startBtn" class="btn primary" type="button">Iniciar evaluación</button>
+          <div id="startMsg" class="msg"></div>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="field">
+          <label class="checkline">
+            <input id="acceptPolicy" type="checkbox" />
+            <span>Acepto la <a href="politica-datos.html" target="_blank" rel="noopener">Política de tratamiento de datos</a>.</span>
           </label>
+          <small class="hint">Obligatorio para continuar.</small>
         </div>
       </div>
 
-      <div class="actions">
-        <button id="startBtn" class="btn primary">Iniciar evaluación</button>
-        <div id="startMsg" class="msg"></div>
-      </div>
-
-      <div class="footerline">LabCore Tech · Uso interno</div>
+      <div id="debugBox" class="debug hidden"></div>
     </section>
 
     <!-- EXAM -->
     <section id="examCard" class="card hidden">
-      <div class="examHeader">
-        <h2>Preguntas</h2>
-        <div id="timer" class="timerPill">--:--</div>
+      <div class="exam-head">
+        <h2 class="exam-title">Evaluación</h2>
+
+        <div class="timer-pill">
+          <span class="timer-label">Tiempo</span>
+          <span id="timer" class="timer">00:00</span>
+        </div>
       </div>
 
       <div id="questionBox" class="questionBox"></div>
 
-      <div class="actions examActions">
-        <button id="okBtn" class="btn primary">Continuar</button>
+      <div class="exam-actions">
+        <button id="okBtn" class="btn primary" type="button">Continuar</button>
         <div id="submitMsg" class="msg"></div>
       </div>
-
-      <div class="footerline">LabCore Tech · Uso interno</div>
     </section>
 
-    <!-- START MODAL -->
-    <div id="infoModal" class="modal hidden" aria-hidden="true">
+    <!-- MODAL INFO -->
+    <div id="infoModal" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-backdrop"></div>
-      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-        <button id="modalCloseX" class="modal-x" aria-label="Cerrar">✕</button>
-        <h3 id="modalTitle">Información antes de iniciar</h3>
+      <div class="modal-card">
+        <div class="modal-head">
+          <div class="modal-title">Información antes de iniciar</div>
+          <button id="modalCloseX" class="modal-x" type="button" aria-label="Cerrar">✕</button>
+        </div>
         <div id="modalBody" class="modal-body"></div>
         <div class="modal-actions">
-          <button id="cancelStartBtn" class="btn ghost">Cancelar</button>
-          <button id="confirmStartBtn" class="btn primary">Acepto, continuar</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- FINISH MODAL -->
-    <div id="finishModal" class="modal hidden" aria-hidden="true">
-      <div class="modal-backdrop"></div>
-      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="finishTitle">
-        <h3 id="finishTitle">Evaluación finalizada</h3>
-        <div class="modal-body">
-          <p class="oktext">Tus respuestas serán remitidas satisfactoriamente al área encargada de LabCore Tech.</p>
-        </div>
-        <div class="modal-actions">
-          <button id="finishOkBtn" class="btn primary">OK</button>
+          <button id="cancelStartBtn" class="btn ghost" type="button">Cancelar</button>
+          <button id="confirmStartBtn" class="btn primary" type="button">Acepto, continuar</button>
         </div>
       </div>
     </div>

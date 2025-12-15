@@ -2,8 +2,12 @@
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzHvvOQPnKd4ZJyk01dzooJEYKQ4c6-4OpVhRiWVk80XvsBV0r9IhXVNF2O0CeLmuPm/exec";
 const APP_TOKEN = "9fA2xQe7MZk4T8Rj3P0LwB1YhD5C6mSNaVUp";
 
-const PER_QUESTION_SEC = 90;              // 90 seg por pregunta
-const MAX_CV_BYTES = 8 * 1024 * 1024;     // 8 MB
+// 90s por pregunta (8 preguntas = 12:00)
+const PER_QUESTION_SEC = 90;
+const MAX_CV_BYTES = 8 * 1024 * 1024; // 8 MB recomendado
+
+// Área interna (NO se muestra)
+const INTERNAL_AREA = "DEV";
 
 // ================= HELPERS =================
 const $ = (id) => document.getElementById(id);
@@ -14,18 +18,14 @@ function mmss(sec){
   const ss = sec % 60;
   return `${String(mm).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
 }
-function minutesLabel(sec){
-  const m = Math.ceil(sec / 60);
-  return `${m} min`;
-}
 
 async function apiGet(mode){
   const u = new URL(APPS_SCRIPT_URL);
   u.searchParams.set("mode", mode);
   u.searchParams.set("token", APP_TOKEN);
-  u.searchParams.set("area", "DEV"); // interno
+  u.searchParams.set("area", INTERNAL_AREA);
 
-  const r = await fetch(u.toString(), { cache:"no-store" });
+  const r = await fetch(u.toString(), { cache: "no-store" });
   const d = await r.json().catch(()=> ({}));
   if(!r.ok || !d.ok) throw new Error(d.error || "server_error");
   return d;
@@ -34,7 +34,7 @@ async function apiGet(mode){
 function fileToBase64(file){
   return new Promise((resolve, reject)=>{
     const fr = new FileReader();
-    fr.onload = ()=> {
+    fr.onload = ()=>{
       const res = String(fr.result || "");
       const base64 = res.split(",")[1] || "";
       resolve(base64);
@@ -46,8 +46,8 @@ function fileToBase64(file){
 
 // ================= STATE =================
 let candidate = null;
-let cvPayload = null;
-let exam = null; // {questions[], answersMap{}}
+let cvPayload = null; // {name,mime,base64,bytes}
+let exam = null;      // {questions[], answersMap{}}
 let idx = 0;
 
 let startedAt = 0;
@@ -56,18 +56,22 @@ let timerInt = null;
 
 const LS_PREFIX = "labcore_eval";
 const LS_LOCK = (ced) => `${LS_PREFIX}:lock:${ced}`;
-const LS_QUEUE = `${LS_PREFIX}:queue`;
+const LS_LAST = `${LS_PREFIX}:last_payload`; // respaldo local si falla envío
 
-function lockCedula(ced){ localStorage.setItem(LS_LOCK(ced), "1"); }
-function isLocked(ced){ return localStorage.getItem(LS_LOCK(ced)) === "1"; }
+function lockCedula(ced){
+  localStorage.setItem(LS_LOCK(ced), "1");
+}
+function isLocked(ced){
+  return localStorage.getItem(LS_LOCK(ced)) === "1";
+}
 
-// incidencias (solo para ti por correo)
+// ================= Incidencias (SOLO para correo) =================
 const incidents = {
   total:0,
-  copy:0,
-  paste:0,
-  cut:0,
-  contextmenu:0,
+  copyBlocked:0,
+  pasteBlocked:0,
+  cutBlocked:0,
+  contextMenuBlocked:0,
   printScreen:0,
   ctrlP:0,
   visibilityChanges:0,
@@ -77,96 +81,116 @@ const incidents = {
 };
 function addIncident(type, detail){
   incidents.total++;
-  incidents.events.push({ type, detail, at:new Date().toISOString() });
-  if(incidents.events.length > 180) incidents.events.shift();
+  incidents.events.push({ type, detail, at: new Date().toISOString() });
+  if(incidents.events.length > 200) incidents.events.shift();
 }
 
-// ================= MODALS =================
-function openModal(html){
-  $("modalBody").innerHTML = html;
+// ================= MODAL (1 modal reutilizable) =================
+let modalConfirmHandler = null;
+let modalCancelHandler = null;
+
+function openModal({ title, bodyHtml, showCancel, confirmText, cancelText }){
+  $("modalBody").innerHTML = bodyHtml || "";
+  const titleEl = document.querySelector(".modal-title");
+  if(titleEl) titleEl.textContent = title || "Información";
+
+  const cancelBtn = $("cancelStartBtn");
+  const confirmBtn = $("confirmStartBtn");
+
+  cancelBtn.textContent = cancelText || "Cancelar";
+  confirmBtn.textContent = confirmText || "Aceptar";
+
+  cancelBtn.style.display = showCancel ? "" : "none";
+
   $("infoModal").classList.remove("hidden");
 }
-function closeModal(){ $("infoModal").classList.add("hidden"); }
 
-function openFinish(){
-  $("finishModal").classList.remove("hidden");
-}
-function closeFinish(){
-  $("finishModal").classList.add("hidden");
+function closeModal(){
+  $("infoModal").classList.add("hidden");
+  modalConfirmHandler = null;
+  modalCancelHandler = null;
 }
 
-function modalHtml(totalLabel){
+function wireModalButtonsOnce(){
+  if(wireModalButtonsOnce._done) return;
+  wireModalButtonsOnce._done = true;
+
+  $("modalCloseX").addEventListener("click", ()=>{
+    // X: cerrar sin cambios
+    closeModal();
+    if(typeof modalCancelHandler === "function") modalCancelHandler();
+  });
+
+  $("cancelStartBtn").addEventListener("click", ()=>{
+    // Cancelar: cerrar sin cambios
+    closeModal();
+    if(typeof modalCancelHandler === "function") modalCancelHandler();
+  });
+
+  $("confirmStartBtn").addEventListener("click", ()=>{
+    const fn = modalConfirmHandler;
+    closeModal();
+    if(typeof fn === "function") fn();
+  });
+}
+
+function startInfoHtml(totalStr){
   return `
     <div>
-      Esta evaluación tiene una duración máxima de <b>${totalLabel}</b>.
-      Se recomienda disponer de este tiempo completo para responder con calma.
-      <ul>
-        <li>Evita recargar la página o cerrar la ventana durante la sesión.</li>
-        <li>Si la sesión se interrumpe, se registrará como incidencia.</li>
+      <p style="margin:0 0 10px 0;">
+        Esta evaluación de ingreso tiene una duración máxima de <b>${totalStr}</b>.
+        Se recomienda disponer de este tiempo completo para responder con calma y sin interrupciones.
+      </p>
+      <ul style="margin:0 0 0 18px; padding:0;">
+        <li>Durante la sesión, evita recargar la página o cerrar la ventana.</li>
+        <li>Si la sesión se interrumpe, la evaluación no podrá iniciarse nuevamente desde este dispositivo.</li>
       </ul>
     </div>
   `;
 }
 
-// ================= VALIDATION =================
-function validateForm(){
-  const firstName = $("firstName").value.trim();
-  const lastName  = $("lastName").value.trim();
-  const cedula    = $("cedula").value.trim();
-  const university = $("university").value.trim();
-  const career     = $("career").value;
-  const semester   = $("semester").value;
-  const role       = $("role").value;
-  const cvFile = $("cvFile").files && $("cvFile").files[0];
-  const privacy = $("privacyAccept").checked;
-
-  if(firstName.length < 2) return "Nombre inválido.";
-  if(lastName.length < 2) return "Apellido inválido.";
-  if(cedula.length < 5) return "Cédula inválida.";
-  if(university.length < 2) return "Universidad inválida.";
-  if(!career) return "Selecciona la carrera.";
-  if(!semester) return "Selecciona el semestre.";
-  if(!role) return "Selecciona el cargo a aspirar.";
-  if(!cvFile) return "Debes anexar la hoja de vida.";
-  if(cvFile.size > MAX_CV_BYTES) return "La hoja de vida excede el tamaño permitido (8 MB).";
-  if(!privacy) return "Debes aceptar la Política de tratamiento de datos.";
-  return null;
+function finishInfoHtml(){
+  return `
+    <div>
+      <p style="margin:0;">
+        Tus respuestas serán remitidas satisfactoriamente al área encargada de LabCore Tech.
+      </p>
+    </div>
+  `;
 }
 
-function buildCandidate(){
-  const firstName = $("firstName").value.trim();
-  const lastName  = $("lastName").value.trim();
-  return {
-    firstName,
-    lastName,
-    cedula: $("cedula").value.trim(),
-    area: "DEV", // interno
-    university: $("university").value.trim(),
-    career: $("career").value,
-    semester: $("semester").value,
-    role: $("role").value,
-    fullName: `${firstName} ${lastName}`.trim()
-  };
-}
-
-// ================= SECURITY (SIN BLOQUEAR) =================
+// ================= SECURITY (registrar, NO romper evaluación) =================
 let securityWired = false;
 function wireSecurityOnce(){
   if(securityWired) return;
   securityWired = true;
 
-  document.addEventListener("copy", (e)=>{ incidents.copy++; addIncident("copy", "copy"); e.preventDefault(); });
-  document.addEventListener("cut", (e)=>{ incidents.cut++; addIncident("cut", "cut"); e.preventDefault(); });
-  document.addEventListener("paste", (e)=>{ incidents.paste++; addIncident("paste", "paste"); e.preventDefault(); });
-  document.addEventListener("contextmenu", (e)=>{ incidents.contextmenu++; addIncident("contextmenu", "contextmenu"); e.preventDefault(); });
+  // Bloquear copiar/pegar/cortar + click derecho
+  document.addEventListener("copy", (e)=>{
+    incidents.copyBlocked++; addIncident("copy_blocked", "copy");
+    e.preventDefault();
+  });
+  document.addEventListener("cut", (e)=>{
+    incidents.cutBlocked++; addIncident("cut_blocked", "cut");
+    e.preventDefault();
+  });
+  document.addEventListener("paste", (e)=>{
+    incidents.pasteBlocked++; addIncident("paste_blocked", "paste");
+    e.preventDefault();
+  });
+  document.addEventListener("contextmenu", (e)=>{
+    incidents.contextMenuBlocked++; addIncident("contextmenu_blocked", "contextmenu");
+    e.preventDefault();
+  });
 
+  // Registrar intentos comunes (NO se puede impedir screenshot real del sistema)
   document.addEventListener("keydown", (e)=>{
     if(e.key === "PrintScreen"){
       incidents.printScreen++; addIncident("printscreen", "PrintScreen");
     }
     const isMac = navigator.platform.toLowerCase().includes("mac");
     const ctrlOrCmd = isMac ? e.metaKey : e.ctrlKey;
-    if(ctrlOrCmd && (e.key.toLowerCase() === "p")){
+    if(ctrlOrCmd && e.key.toLowerCase() === "p"){
       incidents.ctrlP++; addIncident("print_attempt", "Ctrl/Cmd+P");
       e.preventDefault();
     }
@@ -176,18 +200,69 @@ function wireSecurityOnce(){
     incidents.visibilityChanges++;
     addIncident("visibilitychange", document.hidden ? "hidden" : "visible");
   });
+
   window.addEventListener("blur", ()=>{
     incidents.blurCount++;
     addIncident("window_blur", "blur");
   });
+
+  // Evitar recarga/salida accidental durante examen (confirmación del navegador)
   window.addEventListener("beforeunload", (e)=>{
     if(!exam) return;
     incidents.beforeUnload++;
     addIncident("beforeunload", "attempt_leave_or_refresh");
-    // NO bloquea, NO muestra error. Solo registra.
     e.preventDefault();
     e.returnValue = "";
   });
+}
+
+// ================= VALIDATION =================
+function validateForm(){
+  const firstName = $("firstName").value.trim();
+  const lastName  = $("lastName").value.trim();
+  const cedula    = $("cedula").value.trim();
+
+  const university = $("university").value.trim();
+  const career     = $("career").value;
+  const semester   = $("semester").value;
+  const role       = $("role").value;
+
+  const cvFile = $("cvFile").files && $("cvFile").files[0];
+
+  const acceptPolicy = $("acceptPolicy") ? $("acceptPolicy").checked : true;
+
+  if(firstName.length < 2) return "Nombre inválido.";
+  if(lastName.length < 2) return "Apellido inválido.";
+  if(cedula.length < 5) return "Cédula inválida.";
+
+  if(university.length < 2) return "Universidad inválida.";
+  if(!career) return "Selecciona la carrera.";
+  if(!semester) return "Selecciona el semestre.";
+  if(!role) return "Selecciona el cargo a aspirar.";
+
+  if(!cvFile) return "Debes anexar la hoja de vida.";
+  if(cvFile.size > MAX_CV_BYTES) return "La hoja de vida excede el tamaño recomendado (8 MB).";
+
+  if(!acceptPolicy) return "Debes aceptar la Política de tratamiento de datos para continuar.";
+
+  return null;
+}
+
+function buildCandidate(){
+  const firstName = $("firstName").value.trim();
+  const lastName  = $("lastName").value.trim();
+
+  return {
+    firstName,
+    lastName,
+    fullName: `${firstName} ${lastName}`.trim(),
+    cedula: $("cedula").value.trim(),
+    area: INTERNAL_AREA,
+    university: $("university").value.trim(),
+    career: $("career").value,
+    semester: $("semester").value,
+    role: $("role").value
+  };
 }
 
 // ================= TIMER =================
@@ -197,33 +272,30 @@ function startTimer(){
     $("timer").textContent = mmss(rem);
     if(rem <= 0){
       stopTimer();
-      submitAll(true, "Tiempo agotado");
+      submitAll(true, "time_over").catch(()=>{});
     }
-  }, 400);
+  }, 500);
 }
 function stopTimer(){
   if(timerInt) clearInterval(timerInt);
   timerInt = null;
 }
 
-// ================= RENDER QUESTION =================
+// ================= RENDER 1 QUESTION =================
 function renderQuestion(){
   const q = exam.questions[idx];
-  const n = idx + 1;
-
   const current = exam.answersMap[q.id] || "";
 
   $("questionBox").innerHTML = `
-    <div class="qtitle">${n}. ${q.prompt}</div>
+    <div class="qtitle">${idx + 1}. ${q.prompt}</div>
     <textarea id="answerBox" placeholder="Escribe tu respuesta..."></textarea>
   `;
 
   const ta = $("answerBox");
   ta.value = current;
 
-  // bloquear pegar dentro de textarea (solo registra)
   ta.addEventListener("paste", (e)=>{
-    incidents.paste++; addIncident("paste", "textarea_paste");
+    incidents.pasteBlocked++; addIncident("paste_blocked", "textarea_paste");
     e.preventDefault();
   });
 
@@ -233,46 +305,14 @@ function renderQuestion(){
 }
 
 function buildAnswers(){
-  return exam.questions.map((q, i) => ({
-    n: i+1,
+  return exam.questions.map(q => ({
     id: q.id,
     prompt: q.prompt,
-    answer: (exam.answersMap[q.id] || "").trim(),
     moduleId: q.moduleId,
-    module: q.moduleName
+    moduleName: q.moduleName,
+    answer: (exam.answersMap[q.id] || "").trim()
   }));
 }
-
-// ================= QUEUE (si falla red) =================
-function loadQueue(){
-  try{ return JSON.parse(localStorage.getItem(LS_QUEUE) || "[]"); }
-  catch{ return []; }
-}
-function saveQueue(arr){ localStorage.setItem(LS_QUEUE, JSON.stringify(arr)); }
-function enqueuePayload(payload){
-  const q = loadQueue();
-  q.push({ payload, at: new Date().toISOString() });
-  saveQueue(q);
-}
-async function flushQueue(){
-  const q = loadQueue();
-  if(!q.length) return;
-
-  const remaining = [];
-  for(const item of q){
-    try{
-      await fetch(APPS_SCRIPT_URL, {
-        method:"POST",
-        headers:{ "Content-Type":"text/plain;charset=utf-8" }, // evita preflight
-        body: JSON.stringify(item.payload)
-      });
-    }catch{
-      remaining.push(item);
-    }
-  }
-  saveQueue(remaining);
-}
-setInterval(()=> flushQueue().catch(()=>{}), 12000);
 
 // ================= FLOW =================
 async function onStartClick(){
@@ -280,51 +320,48 @@ async function onStartClick(){
   $("submitMsg").textContent = "";
 
   const err = validateForm();
-  if(err){ $("startMsg").textContent = err; return; }
+  if(err){
+    $("startMsg").textContent = err;
+    return;
+  }
 
   candidate = buildCandidate();
+
   if(isLocked(candidate.cedula)){
-    $("startMsg").textContent = "Esta evaluación ya fue realizada desde este dispositivo para esta cédula.";
+    $("startMsg").textContent = "Esta evaluación ya no está disponible para esta cédula en este dispositivo.";
     return;
   }
 
-  // CV
+  // Leer CV
   const file = $("cvFile").files[0];
   const base64 = await fileToBase64(file);
-  cvPayload = { name: file.name, mime: file.type || "application/octet-stream", base64, bytes: file.size };
+  cvPayload = {
+    name: file.name,
+    mime: file.type || "application/octet-stream",
+    base64,
+    bytes: file.size
+  };
 
-  // meta
-  let meta;
-  try{
-    meta = await apiGet("meta");
-  }catch{
-    $("startMsg").textContent = "No fue posible iniciar en este momento. Intenta nuevamente.";
-    return;
-  }
-
+  // meta (cantidad preguntas) -> tiempo total
+  const meta = await apiGet("meta");
   const totalSec = (meta.questionCount || 0) * PER_QUESTION_SEC;
-  if(totalSec <= 0){
-    $("startMsg").textContent = "No hay preguntas disponibles en este momento.";
-    return;
-  }
 
-  openModal(modalHtml(minutesLabel(totalSec)));
+  // popup SOLO al click iniciar
+  wireModalButtonsOnce();
+  openModal({
+    title: "Información antes de iniciar",
+    bodyHtml: startInfoHtml(mmss(totalSec)),
+    showCancel: true,
+    cancelText: "Cancelar",
+    confirmText: "Acepto, continuar"
+  });
 
-  $("modalCloseX").onclick = closeModal;
-  $("cancelStartBtn").onclick = closeModal;
+  modalCancelHandler = ()=>{ /* cierra sin cambios */ };
 
-  $("confirmStartBtn").onclick = async () => {
-    closeModal();
+  modalConfirmHandler = async ()=>{
     wireSecurityOnce();
 
-    let qdata;
-    try{
-      qdata = await apiGet("questions");
-    }catch{
-      $("startMsg").textContent = "No fue posible cargar las preguntas. Intenta nuevamente.";
-      return;
-    }
-
+    const qdata = await apiGet("questions");
     if(!qdata.questions || !qdata.questions.length){
       $("startMsg").textContent = "No hay preguntas disponibles en este momento.";
       return;
@@ -343,26 +380,24 @@ async function onStartClick(){
 
     renderQuestion();
     startTimer();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: $("examCard").offsetTop - 10, behavior: "smooth" });
   };
 }
 
 async function onOkClick(){
   if(!exam) return;
 
-  const q = exam.questions[idx];
   const ans = ($("answerBox")?.value || "").trim();
-
   if(!ans){
-    $("submitMsg").innerHTML = "<span class='bad'>Por favor, registra tu respuesta antes de continuar.</span>";
+    $("submitMsg").textContent = "Debes responder antes de continuar.";
     return;
   }
 
+  const q = exam.questions[idx];
   exam.answersMap[q.id] = ans;
   $("submitMsg").textContent = "";
 
   const last = (idx === exam.questions.length - 1);
-
   if(!last){
     idx++;
     renderQuestion();
@@ -377,7 +412,6 @@ async function onOkClick(){
 async function submitAll(isAuto, autoReason){
   if(!exam || !candidate) return;
 
-  // bloquear reintentos desde este dispositivo (como lo querías)
   lockCedula(candidate.cedula);
 
   const payload = {
@@ -386,7 +420,7 @@ async function submitAll(isAuto, autoReason){
     meta: {
       startedAtISO: new Date(startedAt).toISOString(),
       submittedAtISO: new Date().toISOString(),
-      durationSec: Math.floor((Date.now() - startedAt)/1000),
+      durationSec: Math.floor((Date.now() - startedAt) / 1000),
       isAutoSubmit: !!isAuto,
       autoReason: autoReason || null,
       userAgent: navigator.userAgent
@@ -396,37 +430,45 @@ async function submitAll(isAuto, autoReason){
     cv: cvPayload
   };
 
-  $("okBtn").disabled = true;
-
+  // POST sin preflight (text/plain)
   try{
-    await fetch(APPS_SCRIPT_URL, {
-      method:"POST",
-      headers:{ "Content-Type":"text/plain;charset=utf-8" }, // evita preflight
+    const r = await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(payload)
     });
-  }catch{
-    // NO mostramos error al usuario: se encola
-    enqueuePayload(payload);
+    const d = await r.json().catch(()=> ({}));
+    if(!r.ok || !d.ok) throw new Error(d.error || "send_failed");
+  }catch(err){
+    // respaldo local
+    try{ localStorage.setItem(LS_LAST, JSON.stringify(payload)); }catch(_){}
   }
 
-  // popup final y volver al index
-  openFinish();
+  $("okBtn").disabled = true;
+
+  wireModalButtonsOnce();
+  openModal({
+    title: "Evaluación finalizada",
+    bodyHtml: finishInfoHtml(),
+    showCancel: false,
+    confirmText: "OK",
+    cancelText: ""
+  });
+
+  modalConfirmHandler = ()=>{
+    window.location.href = "index.html";
+  };
 }
 
-// finish ok -> reset
-$("finishOkBtn").addEventListener("click", ()=>{
-  closeFinish();
-  window.location.href = "index.html";
-});
-
 // ================= INIT =================
-$("startBtn").addEventListener("click", ()=> onStartClick().catch(()=>{
-  $("startMsg").textContent = "No fue posible iniciar en este momento. Intenta nuevamente.";
-}));
+document.addEventListener("DOMContentLoaded", ()=>{
+  wireModalButtonsOnce();
 
-$("okBtn").addEventListener("click", ()=> onOkClick().catch(()=>{
-  // no se cae el cuestionario
-  $("submitMsg").innerHTML = "<span class='bad'>Ocurrió un inconveniente. Puedes continuar.</span>";
-}));
+  $("startBtn").addEventListener("click", ()=>{
+    onStartClick().catch(()=>{ $("startMsg").textContent = "No fue posible iniciar en este momento."; });
+  });
 
-flushQueue().catch(()=>{});
+  $("okBtn").addEventListener("click", ()=>{
+    onOkClick().catch(()=>{ $("submitMsg").textContent = "Ocurrió un inconveniente, intenta continuar."; });
+  });
+});
