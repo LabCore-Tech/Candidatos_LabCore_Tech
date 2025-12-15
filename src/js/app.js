@@ -2,43 +2,37 @@
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzHvvOQPnKd4ZJyk01dzooJEYKQ4c6-4OpVhRiWVk80XvsBV0r9IhXVNF2O0CeLmuPm/exec";
 const APP_TOKEN = "9fA2xQe7MZk4T8Rj3P0LwB1YhD5C6mSNaVUp";
 
-// 90s por pregunta
+// 90 segundos por pregunta (8 preguntas => 12 min)
 const PER_QUESTION_SEC = 90;
-const MAX_CV_BYTES = 8 * 1024 * 1024; // 8 MB recomendado
+const MAX_CV_BYTES = 8 * 1024 * 1024;
 
-// Área interna (no se muestra)
-const INTERNAL_AREA = "DEV";
+// Área interna (NO se muestra)
+const AREA = "DEV";
 
 // ================= HELPERS =================
 const $ = (id) => document.getElementById(id);
 
-function showDebug(msg){
-  const b = $("debugBox");
-  if(!b) return;
-  b.textContent = msg;
-  b.classList.remove("hidden");
-}
-function clearDebug(){
-  const b = $("debugBox");
-  if(!b) return;
-  b.textContent = "";
-  b.classList.add("hidden");
+function minutesLabel(totalSec){
+  const min = Math.ceil(totalSec / 60);
+  return `${min} minutos`;
 }
 
-function mmss(sec){
-  sec = Math.max(0, Math.floor(sec));
-  const mm = Math.floor(sec / 60);
-  const ss = sec % 60;
-  return `${String(mm).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
+function shuffle(a){
+  a = a.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 async function apiGet(mode){
   const u = new URL(APPS_SCRIPT_URL);
   u.searchParams.set("mode", mode);
   u.searchParams.set("token", APP_TOKEN);
-  u.searchParams.set("area", INTERNAL_AREA);
+  u.searchParams.set("area", AREA);
 
-  const r = await fetch(u.toString(), { cache:"no-store" });
+  const r = await fetch(u.toString(), { cache: "no-store" });
   const d = await r.json().catch(()=> ({}));
   if(!r.ok || !d.ok) throw new Error(d.error || "server_error");
   return d;
@@ -49,8 +43,7 @@ function fileToBase64(file){
     const fr = new FileReader();
     fr.onload = ()=>{
       const res = String(fr.result || "");
-      const base64 = res.split(",")[1] || "";
-      resolve(base64);
+      resolve((res.split(",")[1] || ""));
     };
     fr.onerror = ()=> reject(new Error("file_read_error"));
     fr.readAsDataURL(file);
@@ -59,23 +52,23 @@ function fileToBase64(file){
 
 // ================= STATE =================
 let candidate = null;
-let cvPayload = null; // {name,mime,base64,bytes}
+let cvPayload = null;
 
-let exam = null;      // {questions[], answersMap{}}
+let exam = null; // { questions:[], answersMap:{} }
 let idx = 0;
 
 let startedAt = 0;
 let deadlineAt = 0;
 let timerInt = null;
 
-// “No repetir evaluación” (por cédula en este navegador)
+// Lock por cédula en este dispositivo
 const LS_PREFIX = "labcore_eval";
 const LS_LOCK = (ced) => `${LS_PREFIX}:lock:${ced}`;
 
-// Cola de envíos si falla red
+// Cola de envíos (si no hay internet o falla Apps Script)
 const LS_QUEUE = `${LS_PREFIX}:pending_submissions`;
 
-// incidencias SOLO para ti (NO afectan al usuario)
+// Incidencias SOLO para ti (no afectan UX)
 const incidents = {
   total:0,
   copyBlocked:0,
@@ -92,8 +85,8 @@ const incidents = {
 
 function addIncident(type, detail){
   incidents.total++;
-  incidents.events.push({ type, detail, at:new Date().toISOString() });
-  if(incidents.events.length > 120) incidents.events.shift();
+  incidents.events.push({ type, detail, at: new Date().toISOString() });
+  if(incidents.events.length > 140) incidents.events.shift();
 }
 
 function lockCedula(ced){
@@ -111,14 +104,26 @@ function openModal(html){
 function closeModal(){
   $("infoModal").classList.add("hidden");
 }
-function modalHtml(totalStr){
+function modalHtml(totalSec){
   return `
     <div>
-      Esta evaluación tiene una duración máxima de <b>${totalStr}</b>. Se recomienda disponer de este tiempo completo para responder con calma.
+      Esta evaluación de ingreso tiene una duración máxima de
+      <b>${minutesLabel(totalSec)}</b>.
+      Se recomienda disponer de este tiempo completo para responder con calma.
+
       <ul style="margin:10px 0 0 18px;">
         <li>Evita recargar la página o cerrar la ventana durante la sesión.</li>
-        <li>Si la sesión se interrumpe, no es posible iniciar nuevamente la evaluación desde este dispositivo.</li>
+        <li>Una vez finalizada o interrumpida, la evaluación no estará disponible nuevamente desde este dispositivo.</li>
       </ul>
+
+      <p class="legal-note" style="margin-top:12px; font-size:0.85rem; color:#6b7280;">
+        Al continuar con esta evaluación, autorizas el tratamiento de tus datos personales
+        conforme a la Ley 1581 de 2012, el Decreto 1377 de 2013 y la
+        <a href="/politica-datos.html" target="_blank" rel="noopener noreferrer">
+          Política de Tratamiento de Datos Personales
+        </a>
+        de <strong>LabCore Tech</strong>.
+      </p>
     </div>
   `;
 }
@@ -128,16 +133,18 @@ function validateForm(){
   const firstName = $("firstName").value.trim();
   const lastName  = $("lastName").value.trim();
   const cedula    = $("cedula").value.trim();
-  const university= $("university").value.trim();
-  const career    = $("career").value;
-  const semester  = $("semester").value;
-  const role      = $("role").value;
+
+  const university = $("university").value.trim();
+  const career     = $("career").value;
+  const semester   = $("semester").value;
+  const role       = $("role").value;
 
   const cvFile = $("cvFile").files && $("cvFile").files[0];
 
   if(firstName.length < 2) return "Nombre inválido.";
   if(lastName.length < 2) return "Apellido inválido.";
   if(cedula.length < 5) return "Cédula inválida.";
+
   if(university.length < 2) return "Universidad inválida.";
   if(!career) return "Selecciona la carrera.";
   if(!semester) return "Selecciona el semestre.";
@@ -160,13 +167,14 @@ function buildCandidate(){
     career: $("career").value,
     semester: $("semester").value,
     role: $("role").value,
-    area: INTERNAL_AREA, // interno
+    area: AREA,
     fullName: `${firstName} ${lastName}`
   };
 }
 
-// ================= SECURITY (NO DAÑA UX) =================
+// ================= SECURITY (SILENCIOSO) =================
 let securityWired = false;
+
 function wireSecurityOnce(){
   if(securityWired) return;
   securityWired = true;
@@ -209,38 +217,44 @@ function wireSecurityOnce(){
     addIncident("window_blur", "blur");
   });
 
-  // Registrar (sin romper examen)
-  window.addEventListener("beforeunload", (e)=>{
+  // Registramos intento de refresh/cierre, pero NO dañamos el cuestionario ni mostramos mensaje
+  window.addEventListener("beforeunload", ()=>{
     if(!exam) return;
     incidents.beforeUnload++;
     addIncident("beforeunload", "attempt_leave_or_refresh");
-    // No bloquear al usuario con mensajes ni invalidar
   });
 }
 
-// ================= TIMER =================
-function startTimer(){
-  timerInt = setInterval(()=>{
-    const rem = Math.floor((deadlineAt - Date.now()) / 1000);
-    $("timer").textContent = mmss(rem);
-    if(rem <= 0){
+// ================= TIMER (MINUTOS, ROJO) =================
+function startTimer(totalSec){
+  const end = Date.now() + totalSec * 1000;
+  deadlineAt = end;
+
+  const tick = ()=>{
+    const remSec = Math.max(0, Math.ceil((deadlineAt - Date.now())/1000));
+    const remMin = Math.max(0, Math.ceil(remSec/60));
+    $("timer").textContent = `${remMin} min`;
+
+    if(remSec <= 0){
       stopTimer();
-      // auto-submit silencioso
       submitAll(true, "Tiempo agotado");
     }
-  }, 500);
+  };
+
+  tick();
+  timerInt = setInterval(tick, 1000);
 }
+
 function stopTimer(){
   if(timerInt) clearInterval(timerInt);
   timerInt = null;
 }
 
-// ================= RENDER 1 QUESTION =================
+// ================= RENDER (1 PREGUNTA A LA VEZ) =================
 function renderQuestion(){
   const q = exam.questions[idx];
   const current = exam.answersMap[q.id] || "";
 
-  // IMPORTANTE: sin "módulo", sin "pregunta x de x", sin "límite"
   $("questionBox").innerHTML = `
     <div class="qtitle">${q.prompt}</div>
     <textarea id="answerBox" placeholder="Escribe tu respuesta..."></textarea>
@@ -249,7 +263,7 @@ function renderQuestion(){
   const ta = $("answerBox");
   ta.value = current;
 
-  // bloquear pegar en textarea (registrar)
+  // Bloquear pegar dentro del textarea
   ta.addEventListener("paste", (e)=>{
     incidents.pasteBlocked++; addIncident("paste_blocked", "textarea_paste");
     e.preventDefault();
@@ -270,22 +284,22 @@ function buildAnswers(){
   }));
 }
 
-// ================= QUEUE (si falla red) =================
+// ================= QUEUE (FALLO DE RED NO DAÑA UX) =================
 function loadQueue(){
-  try{
-    return JSON.parse(localStorage.getItem(LS_QUEUE) || "[]");
-  }catch{
-    return [];
-  }
+  try{ return JSON.parse(localStorage.getItem(LS_QUEUE) || "[]"); }
+  catch{ return []; }
 }
+
 function saveQueue(arr){
   localStorage.setItem(LS_QUEUE, JSON.stringify(arr));
 }
+
 function enqueuePayload(payload){
   const q = loadQueue();
   q.push({ payload, at: new Date().toISOString() });
   saveQueue(q);
 }
+
 async function flushQueue(){
   const q = loadQueue();
   if(!q.length) return;
@@ -304,11 +318,12 @@ async function flushQueue(){
   }
   saveQueue(remaining);
 }
+
+// Reintentos cada 15s
 setInterval(()=> flushQueue().catch(()=>{}), 15000);
 
 // ================= FLOW =================
 async function onStartClick(){
-  clearDebug();
   $("startMsg").textContent = "";
   $("submitMsg").textContent = "";
 
@@ -325,65 +340,69 @@ async function onStartClick(){
     return;
   }
 
-  // leer CV antes (obligatorio)
+  // Leer CV (obligatorio)
   const file = $("cvFile").files[0];
   const base64 = await fileToBase64(file);
   cvPayload = { name: file.name, mime: file.type || "application/octet-stream", base64, bytes: file.size };
 
-  // consultar meta (cantidad de preguntas)
+  // Pedir meta (cantidad preguntas)
   let meta;
   try{
     meta = await apiGet("meta");
-  }catch(e){
-    // NO mostrar error técnico al usuario
+  }catch{
+    // sin error técnico
     $("startMsg").textContent = "No fue posible iniciar en este momento. Intenta nuevamente.";
     return;
   }
 
-  const totalSec = (meta.questionCount || 0) * PER_QUESTION_SEC;
-  if(totalSec <= 0){
+  const qCount = Number(meta.questionCount || 0);
+  if(qCount <= 0){
     $("startMsg").textContent = "No hay preguntas disponibles en este momento.";
     return;
   }
 
-  // Popup SOLO aquí (al click del botón)
-  openModal(modalHtml(mmss(totalSec)));
+  const totalSec = qCount * PER_QUESTION_SEC;
 
-  $("modalCloseX").onclick = () => closeModal();   // X: cierra sin cambios
-  $("cancelStartBtn").onclick = () => closeModal(); // Cancelar: cierra sin cambios
+  // Modal SOLO aquí
+  openModal(modalHtml(totalSec));
+
+  $("modalCloseX").onclick = () => closeModal();
+  $("cancelStartBtn").onclick = () => closeModal();
 
   $("confirmStartBtn").onclick = async () => {
     closeModal();
 
-    // a partir de aquí, inicia evaluación
     wireSecurityOnce();
 
+    // Pedir preguntas
     let qdata;
     try{
       qdata = await apiGet("questions");
-    }catch(e){
-      $("startMsg").textContent = "No fue posible cargar las preguntas. Intenta nuevamente.";
+    }catch{
+      $("startMsg").textContent = "No fue posible cargar la evaluación. Intenta nuevamente.";
       return;
     }
 
-    if(!qdata.questions || !qdata.questions.length){
+    const questions = Array.isArray(qdata.questions) ? qdata.questions : [];
+    if(!questions.length){
       $("startMsg").textContent = "No hay preguntas disponibles en este momento.";
       return;
     }
 
-    exam = { questions: qdata.questions, answersMap: {} };
+    // Seguridad extra: mezclar también en el front (por si acaso)
+    const finalQuestions = shuffle(questions);
+
+    exam = { questions: finalQuestions, answersMap: {} };
     idx = 0;
 
     startedAt = Date.now();
-    deadlineAt = startedAt + (totalSec * 1000);
-
-    $("timer").textContent = mmss(totalSec);
 
     $("formCard").classList.add("hidden");
     $("examCard").classList.remove("hidden");
 
     renderQuestion();
-    startTimer();
+    startTimer(totalSec);
+
     window.scrollTo({ top: $("examCard").offsetTop - 10, behavior: "smooth" });
   };
 }
@@ -391,20 +410,17 @@ async function onStartClick(){
 async function onOkClick(){
   if(!exam) return;
 
-  const q = exam.questions[idx];
   const ans = ($("answerBox")?.value || "").trim();
-
   if(!ans){
-    // mensaje simple, corporativo (no técnico)
-    $("submitMsg").innerHTML = "<span class='bad'>Por favor, registra tu respuesta antes de continuar.</span>";
+    $("submitMsg").innerHTML = "<span class='bad'>Por favor registra tu respuesta para continuar.</span>";
     return;
   }
 
+  const q = exam.questions[idx];
   exam.answersMap[q.id] = ans;
   $("submitMsg").textContent = "";
 
   const last = (idx === exam.questions.length - 1);
-
   if(!last){
     idx++;
     renderQuestion();
@@ -419,7 +435,6 @@ async function onOkClick(){
 async function submitAll(isAuto, autoReason){
   if(!exam || !candidate) return;
 
-  // lock al finalizar (o auto-submit)
   lockCedula(candidate.cedula);
 
   const payload = {
@@ -438,12 +453,11 @@ async function submitAll(isAuto, autoReason){
     cv: cvPayload
   };
 
-  // UX: siempre mostrar mensaje corporativo (sin errores técnicos)
+  // Mensaje corporativo (sin “si falló” ni errores)
   $("okBtn").disabled = true;
   $("submitMsg").innerHTML =
     "<span class='ok'>Tus respuestas serán remitidas satisfactoriamente al área encargada de LabCore Tech.</span>";
 
-  // intentar enviar; si falla, encolar y reintentar en background
   try{
     await fetch(APPS_SCRIPT_URL, {
       method:"POST",
@@ -451,20 +465,20 @@ async function submitAll(isAuto, autoReason){
       body: JSON.stringify(payload)
     });
   }catch{
+    // si falla: guardar y reintentar sin molestar al candidato
     enqueuePayload(payload);
   }
 }
 
 // ================= INIT =================
 $("startBtn").addEventListener("click", ()=> onStartClick().catch(()=>{
-  // NO mostrar errores técnicos al usuario
   $("startMsg").textContent = "No fue posible iniciar en este momento. Intenta nuevamente.";
 }));
 
 $("okBtn").addEventListener("click", ()=> onOkClick().catch(()=>{
-  // NO mostrar errores técnicos al usuario
+  // NO daño el cuestionario
   $("submitMsg").innerHTML = "<span class='bad'>Ocurrió un inconveniente. Puedes continuar.</span>";
 }));
 
-// Intentar enviar pendientes si existen
+// Reintentar pendientes al cargar
 flushQueue().catch(()=>{});
