@@ -2,14 +2,15 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>LabCore Tech | Evaluación</title>
   <link rel="stylesheet" href="src/css/styles.css" />
 </head>
+
 <body>
   <main class="wrap">
 
-    <!-- TOPBAR PRO -->
+    <!-- TOPBAR -->
     <header class="topbar">
       <div class="topbar-inner">
         <div class="brandline">
@@ -26,122 +27,193 @@
     </header>
 
     <!-- FORM -->
-    <section id="formCard" class="card">
+    <section class="card" id="cardForm">
       <h2>Datos del postulante</h2>
 
-      <div class="grid-3">
-        <div class="field">
-          <label for="firstName">Nombre</label>
-          <input id="firstName" type="text" autocomplete="given-name" required>
+      <form id="candidateForm" autocomplete="off" novalidate>
+        <div class="grid grid-3">
+          <div class="field">
+            <label for="firstName">Nombre</label>
+            <input id="firstName" name="firstName" type="text" placeholder="Ej. Juan" required />
+          </div>
+
+          <div class="field">
+            <label for="lastName">Apellido</label>
+            <input id="lastName" name="lastName" type="text" placeholder="Ej. Pérez" required />
+          </div>
+
+          <div class="field">
+            <label for="cedula">Cédula</label>
+            <input id="cedula" name="cedula" type="text" inputmode="numeric" placeholder="Solo números" required />
+          </div>
         </div>
 
-        <div class="field">
-          <label for="lastName">Apellido</label>
-          <input id="lastName" type="text" autocomplete="family-name" required>
+        <div class="grid grid-3">
+          <div class="field">
+            <label for="university">Universidad</label>
+            <input id="university" name="university" type="text" placeholder="Ej. UNICUCES" required />
+          </div>
+
+          <div class="field">
+            <label for="career">Carrera</label>
+            <select id="career" name="career" required>
+              <option value="" selected disabled>Selecciona...</option>
+              <option>Ingeniería de Sistemas</option>
+              <option>Ingeniería de Software</option>
+              <option>Desarrollo de Software</option>
+              <option>Análisis de Datos</option>
+              <option>Otra</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="semester">Semestre</label>
+            <select id="semester" name="semester" required>
+              <option value="" selected disabled>Selecciona...</option>
+              <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+              <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
+            </select>
+          </div>
         </div>
 
-        <div class="field">
-          <label for="cedula">Cédula</label>
-          <input id="cedula" type="text" inputmode="numeric" autocomplete="off" required>
-        </div>
-      </div>
-
-      <div class="grid-3">
-        <div class="field">
-          <label for="university">Universidad</label>
-          <input id="university" type="text" autocomplete="organization" required>
+        <div class="grid grid-2" id="rowOtherCareer" hidden>
+          <div class="field">
+            <label for="careerOther">¿Cuál?</label>
+            <input id="careerOther" name="careerOther" type="text" placeholder="Escribe tu carrera" />
+          </div>
+          <div></div>
         </div>
 
-        <div class="field">
-          <label for="career">Carrera</label>
-          <select id="career" required>
-            <option value="" selected disabled>Selecciona…</option>
-            <option value="Desarrollo de software">Desarrollo de software</option>
-            <option value="Ingeniería de sistemas">Ingeniería de sistemas</option>
-          </select>
+        <div class="grid grid-2 compact-2">
+          <div class="field">
+            <label for="role">Cargo a aspirar</label>
+            <select id="role" name="role" required>
+              <option value="" selected disabled>Selecciona...</option>
+              <option>Desarrollador</option>
+              <option>QA</option>
+              <option>Analista</option>
+              <option>Soporte</option>
+              <option>Otro</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="cvFile">Hoja de vida (PDF / DOC / DOCX)</label>
+            <input id="cvFile" name="cvFile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required />
+            <div class="hint">Máximo recomendado: 9 MB</div>
+          </div>
         </div>
 
-        <div class="field">
-          <label for="semester">Semestre</label>
-          <select id="semester" required>
-            <option value="" selected disabled>Selecciona…</option>
-            <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
-            <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="grid-3">
-        <div class="field">
-          <label for="role">Cargo a aspirar</label>
-          <select id="role" required>
-            <option value="" selected disabled>Selecciona…</option>
-            <option value="Auxiliar de desarrollo">Auxiliar de desarrollo</option>
-            <option value="Desarrollador">Desarrollador</option>
-          </select>
+        <div class="grid grid-2" id="rowOtherRole" hidden>
+          <div class="field">
+            <label for="roleOther">¿Cuál?</label>
+            <input id="roleOther" name="roleOther" type="text" placeholder="Escribe el cargo" />
+          </div>
+          <div></div>
         </div>
 
-        <div class="field">
-          <label for="cvFile">Hoja de vida (PDF/DOC/DOCX)</label>
-          <input id="cvFile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required>
-          <small class="hint">Obligatorio. Tamaño recomendado: hasta 8 MB.</small>
-        </div>
+        <div class="divider"></div>
 
-        <div class="field actions">
-          <button id="startBtn" class="btn primary" type="button">Iniciar evaluación</button>
-          <div id="startMsg" class="msg"></div>
-        </div>
-      </div>
-
-      <div class="grid-3">
-        <div class="field">
-          <label class="checkline">
-            <input id="acceptPolicy" type="checkbox" />
-            <span>Acepto la <a href="politica-datos.html" target="_blank" rel="noopener">Política de tratamiento de datos</a>.</span>
+        <div class="policy">
+          <label class="check">
+            <input type="checkbox" id="acceptPolicy" required />
+            <span>Acepto la <button type="button" class="linklike" id="btnOpenPolicy">Política de tratamiento de datos</button>.</span>
           </label>
-          <small class="hint">Obligatorio para continuar.</small>
         </div>
-      </div>
 
-      <div id="debugBox" class="debug hidden"></div>
+        <div class="actions">
+          <button type="button" class="btn primary" id="btnStart">Iniciar evaluación</button>
+        </div>
+
+        <div class="formMsg" id="formMsg" role="status" aria-live="polite"></div>
+      </form>
     </section>
 
     <!-- EXAM -->
-    <section id="examCard" class="card hidden">
-      <div class="exam-head">
-        <h2 class="exam-title">Evaluación</h2>
-
-        <div class="timer-pill">
-          <span class="timer-label">Tiempo</span>
-          <span id="timer" class="timer">00:00</span>
+    <section class="card" id="cardExam" hidden>
+      <div class="examHead">
+        <h2 class="examTitle">Preguntas</h2>
+        <div class="timerPill" id="timerPill" aria-live="polite">
+          <span class="timerLabel">Tiempo restante</span>
+          <span class="timerValue" id="timerValue">10:00</span>
         </div>
       </div>
 
-      <div id="questionBox" class="questionBox"></div>
+      <div class="qBox">
+        <div class="qPrompt" id="qPrompt"></div>
 
-      <div class="exam-actions">
-        <button id="okBtn" class="btn primary" type="button">Continuar</button>
-        <div id="submitMsg" class="msg"></div>
+        <textarea id="answer" class="answer" rows="10" placeholder="Escribe tu respuesta..." spellcheck="false"></textarea>
+
+        <div class="examActions">
+          <button type="button" class="btn primary" id="btnNext">Continuar</button>
+        </div>
+
+        <div class="formMsg" id="examMsg" role="status" aria-live="polite"></div>
       </div>
     </section>
 
-    <!-- MODAL INFO -->
-    <div id="infoModal" class="modal hidden" role="dialog" aria-modal="true">
-      <div class="modal-backdrop"></div>
-      <div class="modal-card">
-        <div class="modal-head">
-          <div class="modal-title">Información antes de iniciar</div>
-          <button id="modalCloseX" class="modal-x" type="button" aria-label="Cerrar">✕</button>
-        </div>
-        <div id="modalBody" class="modal-body"></div>
-        <div class="modal-actions">
-          <button id="cancelStartBtn" class="btn ghost" type="button">Cancelar</button>
-          <button id="confirmStartBtn" class="btn primary" type="button">Acepto, continuar</button>
-        </div>
+    <footer class="foot">LabCore Tech · Uso interno</footer>
+  </main>
+
+  <!-- MODAL: INFO INICIAL -->
+  <div class="modal" id="modalInfo" hidden>
+    <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="modalInfoTitle">
+      <div class="modalHead">
+        <h3 id="modalInfoTitle">Información antes de iniciar</h3>
+        <button class="iconBtn" type="button" id="btnCloseInfo" aria-label="Cerrar">×</button>
+      </div>
+
+      <div class="modalBody">
+        <p>
+          Esta evaluación tiene una duración máxima de <b>10 min</b>.
+          Se recomienda disponer de este tiempo completo para responder con calma y sin interrupciones.
+        </p>
+        <ul>
+          <li>Durante la sesión, evita recargar la página o cerrar la ventana.</li>
+          <li>Si se interrumpe la sesión, podrás reiniciar y continuar desde cero.</li>
+        </ul>
+      </div>
+
+      <div class="modalActions">
+        <button type="button" class="btn ghost" id="btnCancelInfo">Cancelar</button>
+        <button type="button" class="btn primary" id="btnAcceptInfo">Acepto, continuar</button>
       </div>
     </div>
+  </div>
 
-  </main>
+  <!-- MODAL: POLÍTICA -->
+  <div class="modal" id="modalPolicy" hidden>
+    <div class="modalCard modalWide" role="dialog" aria-modal="true" aria-labelledby="modalPolicyTitle">
+      <div class="modalHead">
+        <h3 id="modalPolicyTitle">Política de tratamiento de datos</h3>
+        <button class="iconBtn" type="button" id="btnClosePolicy" aria-label="Cerrar">×</button>
+      </div>
+      <div class="modalBody policyFrameWrap">
+        <iframe class="policyFrame" src="politica-datos.html" title="Política de tratamiento de datos"></iframe>
+      </div>
+      <div class="modalActions">
+        <button type="button" class="btn primary" id="btnOkPolicy">Listo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: FINAL -->
+  <div class="modal" id="modalDone" hidden>
+    <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="modalDoneTitle">
+      <div class="modalHead">
+        <h3 id="modalDoneTitle">Evaluación finalizada</h3>
+        <button class="iconBtn" type="button" id="btnCloseDone" aria-label="Cerrar">×</button>
+      </div>
+
+      <div class="modalBody">
+        <p>Tus respuestas serán remitidas satisfactoriamente al área encargada de LabCore Tech.</p>
+      </div>
+
+      <div class="modalActions">
+        <button type="button" class="btn primary" id="btnDoneOk">Continuar</button>
+      </div>
+    </div>
+  </div>
 
   <script src="src/js/app.js"></script>
 </body>
