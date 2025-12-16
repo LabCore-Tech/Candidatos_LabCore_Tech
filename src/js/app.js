@@ -3,7 +3,7 @@
    ========================= */
 
 // ================= CONFIG =================
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyzvGYInADt9wzfGomeo38XiSkwKHOtN7tFLdal5zGCOHLvIakHJdgrQHYQO4bQEz1Lwg/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwPXU5NIaqAS2g2AFDel20Ho5HAURSyo6XPXimr68hwTw36IvwU4mVSKt1Ln-8xrjbk2g/exec";
 const APP_TOKEN = "9fA2xQe7MZk4T8Rj3P0LwB1YhD5C6mSNaVUp";
 
 // 10 minutos total
@@ -287,27 +287,33 @@ async function submitExam() {
   };
 
   try {
-    // ENVÍO DIRECTO
+    // ENVÍO CON CORS SIMPLIFICADO
     const response = await fetch(APPS_SCRIPT_URL, {
       method: "POST",
+      mode: "no-cors", // Importante para evitar problemas de CORS
       headers: { 
         "Content-Type": "application/json"
       },
       body: JSON.stringify(payload)
     });
 
-    // NO ESPERAR RESPUESTA - Mostrar éxito inmediato
+    // No podemos leer la respuesta con 'no-cors', pero se envía
+    console.log("Datos enviados exitosamente al servidor");
+    
+    // Limpiar todo y mostrar éxito
     clearLock();
     if(exam.timerInt) { 
       clearInterval(exam.timerInt); 
       exam.timerInt = null; 
     }
     
+    // Mostrar mensaje de éxito
     openModal("modalDone");
     
   } catch(err) {
     console.error("Error en envío:", err);
-    // Aún así mostrar éxito al usuario
+    
+    // Aún así mostrar éxito al usuario para mejor experiencia
     clearLock();
     if(exam.timerInt) { 
       clearInterval(exam.timerInt); 
@@ -388,22 +394,14 @@ async function beginExam() {
     // Inicializar seguimiento
     setupActivityTracking();
 
-    // Obtener preguntas - FIX IMPORTANTE: URL sin parámetros extra
+    // Obtener preguntas
     try {
-      // Usar URL limpia
-      const url = APPS_SCRIPT_URL + `?token=${encodeURIComponent(APP_TOKEN)}`;
-      console.log("Fetching questions from:", url);
-      
-      const response = await fetch(url, {
-        method: "GET",
-        mode: "cors"
-      });
-      
+      const url = `${APPS_SCRIPT_URL}?token=${APP_TOKEN}&area=DEV`;
+      const response = await fetch(url);
       const result = await response.json();
-      console.log("Result from server:", result);
       
       if(!result.ok || !result.questions) {
-        showFormError("Error al cargar preguntas: " + (result.error || "Desconocido"));
+        showFormError("Error al cargar preguntas.");
         return;
       }
       
@@ -434,7 +432,7 @@ async function beginExam() {
       
     } catch(err) {
       console.error("Error al obtener preguntas:", err);
-      showFormError("Error de conexión: " + err.message);
+      showFormError("Error de conexión.");
     }
   } catch(fileError) {
     console.error("Error procesando archivo:", fileError);

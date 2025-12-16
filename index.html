@@ -54,7 +54,7 @@
           <input id="university" name="university" type="text" placeholder="Escribe tu universidad" required autocomplete="organization" />
         </div>
 
-        <div class="field">
+        <!--<div class="field">
           <label for="career">Carrera</label>
           <select id="career" name="career" required>
             <option value="" selected disabled>Selecciona...</option>
@@ -62,7 +62,7 @@
             <option>Tecnología en Sistemas</option>
             <option>Desarrollo de Software</option>
             <option>Ingeniería de Software</option>
-            <option value="OTRA">Otra</option>
+            <option value="OTRA">Otra</option> 
           </select>
         </div>
 
@@ -74,11 +74,42 @@
             <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
             <option value="OTRO">Otro</option>
           </select>
-        </div>
+        </div>-->
+		
+		<div class="field">
+		  <label for="career">Carrera</label>
+
+		  <input id="career" name="career" list="careerList"
+				 placeholder="Selecciona... o escribe"
+				 autocomplete="off" required />
+
+		  <datalist id="careerList">
+			<option value="Ingeniería de Sistemas"></option>
+			<option value="Tecnología en Sistemas"></option>
+			<option value="Desarrollo de Software"></option>
+			<option value="Ingeniería de Software"></option>
+			<option value="Otra"></option>
+		  </datalist>
+		</div>
+
+		<div class="field">
+		  <label for="semester">Semestre</label>
+
+		  <input id="semester" name="semester" list="semesterList"
+				 placeholder="Selecciona... o escribe"
+				 inputmode="numeric"
+				 autocomplete="off" required />
+
+		  <datalist id="semesterList">
+			<option value="1"></option><option value="2"></option><option value="3"></option><option value="4"></option><option value="5"></option>
+			<option value="6"></option><option value="7"></option><option value="8"></option><option value="9"></option><option value="10"></option>
+			<option value="Otro"></option>
+		  </datalist>
+		</div>
 
         <!-- Cargo -->
         <div class="field">
-          <label for="role">Cargo a aspirar</label>
+          <label for="role">Cargo a concursar</label>
           <select id="role" name="role" required>
             <option value="" selected disabled>Selecciona...</option>
             <option value="Auxiliar de desarrollo">Auxiliar de desarrollo</option>
@@ -86,27 +117,35 @@
           </select>
         </div>
 
-        <!-- ÚLTIMA FILA: CV y checkbox en línea -->
-        <div class="field field-wide cv-field">
-          <label for="cvFile">Hoja de vida (PDF / DOC / DOCX)</label>
-          
-          <div class="cv-policy-row">
-            <input id="cvFile" name="cvFile" type="file" 
-                   accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
-                   required 
-                   style="flex: 1; min-width: 200px;" />
-            
-            <label class="policy-check">
-              <input id="acceptPolicy" type="checkbox" />
-              <span>
-                Acepto la
-                <a href="politica-datos.html" target="_blank" rel="noopener">Política de tratamiento de datos</a>.
-              </span>
-            </label>
-          </div>
-          
-          <small class="hint" style="margin-top: 4px;">Máximo recomendado: 8 MB</small>
-        </div>
+        <!-- ÚLTIMA FILA: CV y checkbox en línea 
+		<!-- Hoja de vida (columna 2) -->
+		<div class="field cv-field">
+		  <label for="cvFile">Hoja de vida (PDF / DOC / DOCX)</label>
+
+		  <input id="cvFile" name="cvFile" type="file"
+				 accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+				 required />
+
+		  <small class="hint cv-hint">Máximo recomendado: 8 MB</small>
+		</div>
+
+		<!-- Política (columna 3, debajo de Semestre) -->
+		<div class="field">
+		  <label>Política de tratamiento</label>
+
+		  <label class="policy-check">
+			<input id="acceptPolicy" type="checkbox" />
+			<span>
+			  Acepto la
+			  <a href="politica-datos.html"
+				   onclick="window.open('politica-datos.html','politica','width=980,height=720,scrollbars=yes,resizable=yes'); return false;"
+				   style="color: var(--primary2); text-decoration:none;">
+				  Política de tratamiento de datos.
+			  </a>
+
+			</span>
+		  </label>
+		</div>
 
         <!-- Botón centrado -->
         <div class="actions">

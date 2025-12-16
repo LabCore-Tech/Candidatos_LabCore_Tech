@@ -41,11 +41,17 @@ body{
 }
 
 .topbar-inner{ padding:18px 20px; }
+
+/* =========================
+   HEADER (AJUSTADO)
+   ========================= */
 .brandline{
   display:flex;
   align-items:center;
   gap:14px;
+  position: relative;
 }
+
 .logo-badge{
   width:66px; height:66px;
   border-radius: 18px;
@@ -54,25 +60,51 @@ body{
   display:grid; place-items:center;
   overflow:hidden;
 }
+
 .brand-logo{
   width:44px; height:44px;
   object-fit:contain;
 }
+
+/* ✅ antes era column: ahora fila para que "Evaluación de ingreso" quede AL LADO del logo txt */
 .brandcopy{
   display:flex;
-  flex-direction:column;
-  gap:4px;
+  flex-direction:row;
+  align-items:center;   /* ✅ centra verticalmente logo txt y subtítulo */
+  gap:14px;
+  width: 100%;
 }
+
+/* ✅ logo txt centrado verticalmente */
 .brand-text{
-  height:40px !important;
+  height:80px !important;
   width:auto;
   object-fit:contain;
   image-rendering:auto;
+  display:block;
 }
+
+/* ✅ subtítulo al lado, centrado vertical y "ópticamente" como bloque */
 .brand-subtitle{
   color:var(--muted);
-  font-size:14px;
+  line-height:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin:0;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+
+  margin-left: auto;     /* lo manda hacia la derecha dentro de brandcopy */
+  font-size: 16px;       /* un poco más grande (antes 14px) */
+  font-weight: 700;      /* negrilla suave */
+  color: #475569;        /* un poco más marcada que --muted pero sobria */
+  letter-spacing: .2px;
+
 }
+/* ========================= */
 
 .card{
   background: rgba(255,255,255,.88);
@@ -156,49 +188,45 @@ body{
 .field-inline{ margin-top:8px; }
 .hidden{ display:none !important; }
 
-/* Campo de hoja de vida SIN BOX - MODIFICADO */
+/* =========================
+   CV + POLÍTICA (lo que ya tenías)
+   ========================= */
+
+/* Campo de hoja de vida SIN BOX */
 .cv-field {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  grid-column: span 3; /* Ocupa todo el ancho */
+  grid-column: span 1;
 }
 
 .cv-field input[type="file"] {
   height: 46px;
   padding: 0 14px;
   border-radius: 16px;
-  border: 1px solid var(--line);
-  background: #f9fbff;
+  background: transparent;
   font-size: 15px;
   color: #334155;
   cursor: pointer;
   display: flex;
   align-items: center;
   width: 100%;
+  border:1px solid transparent; /* cuadro transparente */
+  margin-top: 8px !important;   /* bajar SOLO el input */
 }
 
-/* Fila para CV y checkbox - MODIFICADO */
-.cv-policy-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 8px;
-  width: 100%;
-  gap: 16px;
-}
-
-/* Política alineada horizontalmente - MODIFICADO */
-.policy-check {
+/* Bajar SOLO el checkbox de política */
+.policy-check{
+  margin-top: 8px !important;
   display: flex;
   align-items: center;
   gap: 8px;
   color:#334155;
   font-size:14px;
-  margin: 0;
+  margin-left: 0;
   white-space: nowrap;
 }
-.policy-check input{ 
+.policy-check input{
   margin:0;
   width:16px;
   height:16px;
@@ -206,13 +234,19 @@ body{
 .policy-check a{ color: var(--primary2); text-decoration:none; }
 .policy-check a:hover{ text-decoration:underline; }
 
+/* Subir “Máximo recomendado…” */
+.cv-hint{
+  margin-top: -8px !important;
+}
+/* ========================= */
+
 .actions{
   grid-column: 1 / -1;
   display:flex;
-  justify-content:center; /* CENTRADO */
+  justify-content:center;
   gap:10px;
-  padding-top: 8px; /* MÁS ARRIBA */
-  margin-top: 8px;
+  padding-top: 2px;
+  margin-top: -10px;
 }
 
 .btn{
@@ -359,24 +393,35 @@ body{
   .wrap{ width: 94vw; margin: 14px auto 22px; }
   .topbar-inner{ padding: 14px; }
   .logo-badge{ width:58px; height:58px; }
+
+  /* ✅ en móvil el logo txt no debe ser gigante */
   .brand-text{ height:34px !important; }
+
+  /* ✅ en móvil puede volver a columna para que no se apriete */
+  .brandcopy{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:4px;
+  }
+  .brand-subtitle{
+    justify-content:flex-start;
+  }
+
   .card-head h1, .card-head h2{ font-size:24px; }
   .formgrid{ grid-template-columns: 1fr; }
   .timerBox{ min-width: 160px; }
   .qText{ font-size:18px; }
   .answerBox{ min-height: 120px; }
+
   .cv-field {
     grid-column: span 1;
   }
-  .cv-policy-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
+
   .form-error {
     margin-left: 0;
     margin-top: 8px;
   }
+
   .actions {
     justify-content: center;
   }
