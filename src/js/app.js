@@ -54,8 +54,8 @@ function sanitizeName(s) {
 
 function formatMMSS(totalSec) {
   totalSec = Math.max(0, Math.floor(totalSec));
-  const mm = String(Math.floor(totalSec/60)).padStart(2,"0");
-  const ss = String(totalSec%60).padStart(2,"0");
+  const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
+  const ss = String(totalSec % 60).padStart(2, "0");
   return `${mm}:${ss}`;
 }
 
@@ -96,14 +96,14 @@ let exam = {
 // ================= UI MODALS =================
 function openModal(id) {
   const m = $(id);
-  if(!m) return;
+  if (!m) return;
   m.classList.remove("hidden");
   m.setAttribute("aria-hidden", "false");
 }
 
 function closeModal(id) {
   const m = $(id);
-  if(!m) return;
+  if (!m) return;
   m.classList.add("hidden");
   m.setAttribute("aria-hidden", "true");
 }
@@ -112,9 +112,9 @@ function closeModal(id) {
 function hasLock() {
   try {
     const raw = localStorage.getItem(LOCK_KEY);
-    if(!raw) return null;
+    if (!raw) return null;
     return JSON.parse(raw);
-  } catch(_) {
+  } catch (_) {
     return null;
   }
 }
@@ -122,37 +122,39 @@ function hasLock() {
 function setLock(obj) {
   try {
     localStorage.setItem(LOCK_KEY, JSON.stringify(obj));
-  } catch(_) {}
+  } catch (_) {}
 }
 
 function clearLock() {
-  try { localStorage.removeItem(LOCK_KEY); } catch(_) {}
+  try {
+    localStorage.removeItem(LOCK_KEY);
+  } catch (_) {}
 }
 
 // ================= VALIDATION =================
 function validateForm() {
   const firstName = sanitizeName($("firstName").value);
-  const lastName  = sanitizeName($("lastName").value);
-  const cedula    = $("cedula").value.trim();
+  const lastName = sanitizeName($("lastName").value);
+  const cedula = $("cedula").value.trim();
   const university = sanitizeName($("university").value);
-  const career    = $("career").value;
-  const semester  = $("semester").value;
-  const role      = $("role").value;
+  const career = $("career").value;
+  const semester = $("semester").value;
+  const role = $("role").value;
   const acceptPolicy = $("acceptPolicy").checked;
   const file = $("cvFile").files && $("cvFile").files[0];
 
   // Validaciones
-  if(!firstName) return "Nombre es obligatorio";
-  if(!lastName) return "Apellido es obligatorio";
-  if(!cedula) return "Cédula es obligatoria";
-  if(!/^\d+$/.test(cedula)) return "Cédula debe contener solo números";
-  if(!university) return "Universidad es obligatoria";
-  if(!career) return "Carrera es obligatoria";
-  if(!semester) return "Semestre es obligatorio";
-  if(!role) return "Cargo es obligatorio";
-  if(!file) return "Hoja de vida es obligatoria";
-  if(file.size > MAX_CV_BYTES) return "Hoja de vida supera 8 MB";
-  if(!acceptPolicy) return "Debes aceptar la Política de datos";
+  if (!firstName) return "Nombre es obligatorio";
+  if (!lastName) return "Apellido es obligatorio";
+  if (!cedula) return "Cédula es obligatoria";
+  if (!/^\d+$/.test(cedula)) return "Cédula debe contener solo números";
+  if (!university) return "Universidad es obligatoria";
+  if (!career) return "Carrera es obligatoria";
+  if (!semester) return "Semestre es obligatorio";
+  if (!role) return "Cargo es obligatorio";
+  if (!file) return "Hoja de vida es obligatoria";
+  if (file.size > MAX_CV_BYTES) return "Hoja de vida supera 8 MB";
+  if (!acceptPolicy) return "Debes aceptar la Política de datos";
 
   return {
     firstName,
@@ -168,9 +170,14 @@ function validateForm() {
 }
 
 // ================= SEGUIMIENTO DE ACTIVIDAD =================
+let _trackingReady = false;
+
 function setupActivityTracking() {
+  if (_trackingReady) return;
+  _trackingReady = true;
+
   // Contar cambios de pestaña
-  document.addEventListener('visibilitychange', () => {
+  document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
       exam.blurStartTime = Date.now();
       exam.tabChanges++;
@@ -183,7 +190,7 @@ function setupActivityTracking() {
   });
 
   // Prevenir copiar
-  document.addEventListener('copy', (e) => {
+  document.addEventListener("copy", (e) => {
     if (exam.startedAt) {
       e.preventDefault();
       exam.copyCount++;
@@ -192,7 +199,7 @@ function setupActivityTracking() {
   });
 
   // Prevenir pegar
-  document.addEventListener('paste', (e) => {
+  document.addEventListener("paste", (e) => {
     if (exam.startedAt) {
       e.preventDefault();
       exam.pasteCount++;
@@ -200,14 +207,44 @@ function setupActivityTracking() {
     }
   });
 
-  // Prevenir screenshot
-  document.addEventListener('keydown', (e) => {
-    if (exam.startedAt && e.key === 'PrintScreen') {
+  // Bloquear refresh (F5 / Ctrl+R) + Prevenir screenshot
+  document.addEventListener("keydown", (e) => {
+    if (!exam.startedAt) return;
+
+    const k = (e.key || "").toLowerCase();
+    if (e.key === "F5" || (e.ctrlKey && k === "r")) {
+      e.preventDefault();
+      return false;
+    }
+
+    if (e.key === "PrintScreen") {
       e.preventDefault();
       exam.screenshotAttempts++;
       return false;
     }
   });
+}
+
+// ================= BLOQUEAR SALIDA / REFRESH =================
+let _beforeUnloadHandler = null;
+
+function enableLeaveGuard() {
+  if (_beforeUnloadHandler) return;
+
+  _beforeUnloadHandler = function (e) {
+    if (!exam.startedAt) return;
+    e.preventDefault();
+    e.returnValue = ""; // necesario para que el navegador muestre el aviso
+    return "";
+  };
+
+  window.addEventListener("beforeunload", _beforeUnloadHandler);
+}
+
+function disableLeaveGuard() {
+  if (!_beforeUnloadHandler) return;
+  window.removeEventListener("beforeunload", _beforeUnloadHandler);
+  _beforeUnloadHandler = null;
 }
 
 // ================= EXAM FLOW =================
@@ -223,10 +260,10 @@ function startTimer() {
 
   exam.timerInt = setInterval(() => {
     const now = Date.now();
-    const left = Math.max(0, Math.floor((exam.endsAt - now)/1000));
+    const left = Math.max(0, Math.floor((exam.endsAt - now) / 1000));
     $("timer").textContent = formatMMSS(left);
 
-    if(left <= 0) {
+    if (left <= 0) {
       clearInterval(exam.timerInt);
       exam.timerInt = null;
       exam.timedOut = true;
@@ -238,7 +275,7 @@ function startTimer() {
 
 function showExamUI() {
   // Ocultar formulario, mostrar solo preguntas
-  document.querySelector('.card:first-of-type').style.display = 'none';
+  document.querySelector(".card:first-of-type").style.display = "none";
   $("examCard").classList.remove("hidden");
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -260,7 +297,7 @@ async function submitExam() {
 
   // Calcular tiempo real
   const actualDuration = Math.floor((Date.now() - exam.startedAt) / 1000);
-  
+
   const payload = {
     token: APP_TOKEN,
     candidate: exam.candidate,
@@ -289,46 +326,48 @@ async function submitExam() {
 
   try {
     // ENVÍO CON CORS SIMPLIFICADO
-    const response = await fetch(APPS_SCRIPT_URL, {
+    await fetch(APPS_SCRIPT_URL, {
       method: "POST",
       mode: "no-cors", // Importante para evitar problemas de CORS
-      headers: { 
+      headers: {
         "Content-Type": "application/json"
       },
       body: JSON.stringify(payload)
     });
 
-    // No podemos leer la respuesta con 'no-cors', pero se envía
     console.log("Datos enviados exitosamente al servidor");
-    
+
     // Limpiar todo y mostrar éxito
     clearLock();
-    if(exam.timerInt) { 
-      clearInterval(exam.timerInt); 
-      exam.timerInt = null; 
+    if (exam.timerInt) {
+      clearInterval(exam.timerInt);
+      exam.timerInt = null;
     }
-    
+
+    disableLeaveGuard();
+
     // Mostrar mensaje de éxito
     openModal("modalDone");
-    
-  } catch(err) {
+  } catch (err) {
     console.error("Error en envío:", err);
-    
+
     // Aún así mostrar éxito al usuario para mejor experiencia
     clearLock();
-    if(exam.timerInt) { 
-      clearInterval(exam.timerInt); 
-      exam.timerInt = null; 
+    if (exam.timerInt) {
+      clearInterval(exam.timerInt);
+      exam.timerInt = null;
     }
-    
+
+    disableLeaveGuard(); // ✅ faltaba esto
+
     openModal("modalDone");
   }
 }
 
 function resetToIndex() {
   // Mostrar formulario nuevamente
-  document.querySelector('.card:first-of-type').style.display = 'block';
-  
+  document.querySelector(".card:first-of-type").style.display = "block";
+
   // Limpiar formulario
   $("firstName").value = "";
   $("lastName").value = "";
@@ -339,7 +378,7 @@ function resetToIndex() {
   $("role").value = "";
   $("cvFile").value = "";
   $("acceptPolicy").checked = false;
-  
+
   // Resto del código
   closeModal("modalDone");
   $("examCard").classList.add("hidden");
@@ -347,7 +386,12 @@ function resetToIndex() {
   $("qAnswer").value = "";
   $("qText").textContent = "";
   $("timer").textContent = "10:00";
-  
+
+  disableLeaveGuard();
+
+  // Reset tracking flag (para que no se dupliquen listeners en pruebas/reinicio)
+  _trackingReady = false;
+
   // Reset exam state
   exam = {
     startedAt: null,
@@ -366,7 +410,7 @@ function resetToIndex() {
     blurStartTime: null,
     totalBlurTime: 0
   };
-  
+
   showFormError("");
   showExamError("");
   showUIMessage("");
@@ -375,7 +419,7 @@ function resetToIndex() {
 
 async function beginExam() {
   const lock = hasLock();
-  if(lock && lock.active) {
+  if (lock && lock.active) {
     showFormError("Ya hay una evaluación en progreso.");
     return;
   }
@@ -388,11 +432,11 @@ async function beginExam() {
 
   const candidate = validation;
   const file = $("cvFile").files[0];
-  
+
   try {
     const base64 = await fileToBase64(file);
-    
-    // Inicializar seguimiento
+
+    // Inicializar seguimiento (solo una vez)
     setupActivityTracking();
 
     // Obtener preguntas
@@ -400,16 +444,16 @@ async function beginExam() {
       const url = `${APPS_SCRIPT_URL}?token=${APP_TOKEN}&area=DEV`;
       const response = await fetch(url);
       const result = await response.json();
-      
-      if(!result.ok || !result.questions) {
+
+      if (!result.ok || !result.questions) {
         showFormError("Error al cargar preguntas.");
         return;
       }
-      
+
       exam.questions = result.questions;
       exam.answers = new Array(exam.questions.length).fill("");
       exam.idx = 0;
-      
+
       exam.candidate = candidate;
       exam.cv = {
         name: file.name,
@@ -419,6 +463,8 @@ async function beginExam() {
 
       exam.startedAt = Date.now();
       exam.endsAt = exam.startedAt + TOTAL_SEC * 1000;
+
+      enableLeaveGuard();
 
       setLock({
         active: true,
@@ -430,12 +476,11 @@ async function beginExam() {
       showExamUI();
       renderQuestion();
       startTimer();
-      
-    } catch(err) {
+    } catch (err) {
       console.error("Error al obtener preguntas:", err);
       showFormError("Error de conexión.");
     }
-  } catch(fileError) {
+  } catch (fileError) {
     console.error("Error procesando archivo:", fileError);
     showFormError("Error al procesar la hoja de vida.");
   }
@@ -444,30 +489,30 @@ async function beginExam() {
 // ================= EVENTS =================
 document.addEventListener("DOMContentLoaded", () => {
   // Validar cédula - solo números
-  $("cedula").addEventListener("input", function(e) {
-    this.value = this.value.replace(/\D/g, '');
+  $("cedula").addEventListener("input", function () {
+    this.value = this.value.replace(/\D/g, "");
   });
 
   // Validar archivo
-  $("cvFile").addEventListener("change", function(e) {
+  $("cvFile").addEventListener("change", function () {
     const file = this.files[0];
-    if(file && file.size > MAX_CV_BYTES) {
+    if (file && file.size > MAX_CV_BYTES) {
       showFormError("Archivo demasiado grande (máx. 8 MB)");
       this.value = "";
     }
   });
 
   // start click
-  $("btnStart").addEventListener("click", function(e) {
+  $("btnStart").addEventListener("click", function (e) {
     e.preventDefault();
     showFormError("");
-    
+
     const validation = validateForm();
     if (typeof validation === "string") {
       showFormError(validation);
       return;
     }
-    
+
     openModal("modalInfo");
   });
 
@@ -477,19 +522,19 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btnAcceptStart").addEventListener("click", () => beginExam());
 
   // next question
-  $("btnNext").addEventListener("click", function() {
+  $("btnNext").addEventListener("click", function () {
     const currentAnswer = $("qAnswer").value.trim();
-    
-    if(!currentAnswer || currentAnswer === "") {
+
+    if (!currentAnswer || currentAnswer === "") {
       showExamError("Debes escribir una respuesta antes de continuar.");
       $("qAnswer").focus();
       return;
     }
-    
+
     showExamError("");
     exam.answers[exam.idx] = currentAnswer;
 
-    if(exam.idx < exam.questions.length - 1) {
+    if (exam.idx < exam.questions.length - 1) {
       exam.idx++;
       renderQuestion();
     } else {
@@ -502,8 +547,8 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btnDoneOk").addEventListener("click", resetToIndex);
 
   // Permitir Ctrl+Enter para enviar
-  $("qAnswer").addEventListener("keydown", function(e) {
-    if(e.key === "Enter" && e.ctrlKey) {
+  $("qAnswer").addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && e.ctrlKey) {
       e.preventDefault();
       $("btnNext").click();
     }
@@ -511,9 +556,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Si hay lock, mostrar mensaje
   const lock = hasLock();
-  if(lock && lock.active) {
+  if (lock && lock.active) {
     const now = Date.now();
-    if(now < (lock.endsAt || 0)) {
+    if (now < (lock.endsAt || 0)) {
       showFormError("Ya hay una sesión iniciada. Finaliza la evaluación para reiniciar.");
     }
   }

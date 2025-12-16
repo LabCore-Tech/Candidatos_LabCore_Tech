@@ -303,8 +303,9 @@ body{
 }
 .answerBox{
   width:100%;
-  min-height: 160px;
+  min-height: 140px;
   border-radius: 18px;
+  margin-bottom: 22px;  /* ← este es el aire que necesita el botón */
   border:1px solid var(--line);
   background:#f9fbff;
   padding: 14px;
