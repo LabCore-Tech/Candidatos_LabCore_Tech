@@ -3,7 +3,8 @@
    ========================= */
 
 // ================= CONFIG =================
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwPXU5NIaqAS2g2AFDel20Ho5HAURSyo6XPXimr68hwTw36IvwU4mVSKt1Ln-8xrjbk2g/exec";
+//const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwPXU5NIaqAS2g2AFDel20Ho5HAURSyo6XPXimr68hwTw36IvwU4mVSKt1Ln-8xrjbk2g/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzb4Dgp1ZslymobzMLP2mAH6bBJa_KIvqqgyKscA-6k4c6laM2H8S9ivv2rCVJKeEyF/exec";
 const APP_TOKEN = "9fA2xQe7MZk4T8Rj3P0LwB1YhD5C6mSNaVUp";
 
 // 10 minutos total
