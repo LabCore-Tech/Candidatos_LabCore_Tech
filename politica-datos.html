@@ -2,70 +2,76 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>LabCore Tech | Política de tratamiento de datos</title>
-  <style>
-    :root{--text:#0f172a;--muted:#475569;--line:#e2e8f0;--bg:#ffffff;}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;color:var(--text);background:var(--bg)}
-    .wrap{max-width:900px;margin:0 auto;padding:18px}
-    h1{margin:0 0 8px;font-size:22px}
-    p,li{color:var(--muted);line-height:1.5}
-    .box{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}
-    .hr{height:1px;background:var(--line);margin:14px 0}
-    .small{font-size:12px;color:var(--muted)}
-  </style>
+  <link rel="stylesheet" href="src/css/styles.css" />
 </head>
+
 <body>
-  <div class="wrap">
-    <h1>Política de tratamiento de datos personales</h1>
-    <p class="small">LabCore Tech · Cali, Colombia</p>
+  <main class="wrap">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brandline">
+          <div class="logo-badge">
+            <img src="src/img/LabCore.webp" alt="LabCore Logo" class="brand-logo">
+          </div>
 
-    <div class="box">
-      <p>
-        LabCore Tech informa que los datos personales suministrados en esta evaluación serán tratados
-        exclusivamente con fines de evaluación, selección y trazabilidad del proceso de ingreso.
-      </p>
+          <div class="brandcopy">
+            <img src="src/img/LabCoretxt.webp" alt="LabCore Tech" class="brand-text">
+            <div class="brand-subtitle">Política de tratamiento de datos</div>
+          </div>
+        </div>
+      </div>
+    </header>
 
-      <div class="hr"></div>
+    <section class="card">
+      <div class="card-head">
+        <h1>Política de tratamiento de datos personales</h1>
+        <p class="muted">LabCore Tech · Cali, Colombia</p>
+      </div>
 
-      <p><b>1. Finalidad</b></p>
-      <ul>
-        <li>Gestionar el proceso de evaluación del postulante.</li>
-        <li>Verificar información aportada (cuando aplique).</li>
-        <li>Conservar evidencia del proceso (respuestas y hoja de vida).</li>
-      </ul>
+      <div style="padding: 0 20px 18px; color:#334155; line-height:1.55; font-size:16px;">
+        <h3 style="margin:14px 0 8px;">1. Finalidad</h3>
+        <ul style="margin:0 0 10px 18px;">
+          <li>Gestionar el proceso de evaluación del postulante.</li>
+          <li>Verificar la información aportada (cuando aplique).</li>
+          <li>Conservar evidencia del proceso (respuestas y hoja de vida).</li>
+          <li>Contacto posterior relacionado con el proceso de ingreso.</li>
+        </ul>
 
-      <p><b>2. Datos recopilados</b></p>
-      <ul>
-        <li>Nombre, apellido, cédula, universidad, carrera, semestre, cargo a aspirar.</li>
-        <li>Respuestas de la evaluación.</li>
-        <li>Hoja de vida adjunta.</li>
-      </ul>
+        <h3 style="margin:14px 0 8px;">2. Datos recopilados</h3>
+        <ul style="margin:0 0 10px 18px;">
+          <li>Nombre, apellido, cédula, universidad, carrera, semestre y cargo a aspirar.</li>
+          <li>Respuestas suministradas durante la evaluación.</li>
+          <li>Hoja de vida adjunta (PDF/DOC/DOCX).</li>
+        </ul>
 
-      <p><b>3. Confidencialidad</b></p>
-      <p>
-        La información se tratará de forma confidencial y será accesible únicamente para el equipo autorizado
-        encargado del proceso.
-      </p>
+        <h3 style="margin:14px 0 8px;">3. Tratamiento y conservación</h3>
+        <p style="margin:0 0 10px;">
+          La información será utilizada exclusivamente con fines de evaluación y trazabilidad del proceso.
+          Se conservará por el tiempo necesario para dicho fin y podrá ser eliminada cuando el proceso concluya.
+        </p>
 
-      <p><b>4. Conservación</b></p>
-      <p>
-        Los datos se conservarán por el tiempo necesario para el proceso de evaluación y seguimiento interno,
-        y podrán ser eliminados cuando ya no sean requeridos.
-      </p>
+        <h3 style="margin:14px 0 8px;">4. Derechos del titular</h3>
+        <p style="margin:0 0 10px;">
+          El titular puede solicitar actualización, rectificación o eliminación de sus datos, así como revocar la autorización,
+          según lo permitido por la normativa aplicable.
+        </p>
 
-      <p><b>5. Derechos del titular</b></p>
-      <p>
-        El titular podrá solicitar actualización, corrección o eliminación de sus datos, así como conocer el uso dado,
-        mediante los canales internos definidos por LabCore Tech.
-      </p>
+        <h3 style="margin:14px 0 8px;">5. Contacto</h3>
+        <p style="margin:0;">
+          Para solicitudes relacionadas con datos personales: <b>LabCore Tech · Cali, Colombia</b>
+        </p>
 
-      <div class="hr"></div>
-      <p class="small">
-        Al marcar “Acepto”, el postulante declara haber leído y comprendido esta política y autoriza el tratamiento
-        de sus datos para los fines descritos.
-      </p>
-    </div>
-  </div>
+        <div style="margin-top:16px;">
+          <button class="btn" onclick="window.close()">Cerrar</button>
+        </div>
+      </div>
+    </section>
+
+    <footer style="text-align:center; color:var(--muted); font-size:14px; margin-top:20px; padding:10px;">
+      © LabCore Tech — Política de Tratamiento de Datos Personales
+    </footer>
+  </main>
 </body>
 </html>

@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>LabCore Tech | Evaluación</title>
   <link rel="stylesheet" href="src/css/styles.css" />
 </head>
@@ -10,11 +10,11 @@
 <body>
   <main class="wrap">
 
-    <!-- TOPBAR -->
+    <!-- TOPBAR PRO -->
     <header class="topbar">
       <div class="topbar-inner">
         <div class="brandline">
-          <div class="logo-badge">
+          <div class="logo-badge" aria-hidden="true">
             <img src="src/img/LabCore.webp" alt="LabCore Logo" class="brand-logo">
           </div>
 
@@ -26,195 +26,172 @@
       </div>
     </header>
 
-    <!-- FORM -->
-    <section class="card" id="cardForm">
-      <h2>Datos del postulante</h2>
+    <!-- CARD FORM -->
+    <section class="card">
+      <div class="card-head">
+        <h1>Datos del postulante</h1>
+        <p class="muted">Completa los campos y adjunta la hoja de vida antes de iniciar.</p>
+      </div>
 
-      <form id="candidateForm" autocomplete="off" novalidate>
-        <div class="grid grid-3">
-          <div class="field">
-            <label for="firstName">Nombre</label>
-            <input id="firstName" name="firstName" type="text" placeholder="Ej. Juan" required />
-          </div>
+      <form id="candidateForm" class="formgrid" autocomplete="on" novalidate>
+        <div class="field">
+          <label for="firstName">Nombre</label>
+          <input id="firstName" name="firstName" type="text" placeholder="Escribe tu nombre" required autocomplete="given-name" />
+        </div>
 
-          <div class="field">
-            <label for="lastName">Apellido</label>
-            <input id="lastName" name="lastName" type="text" placeholder="Ej. Pérez" required />
-          </div>
+        <div class="field">
+          <label for="lastName">Apellido</label>
+          <input id="lastName" name="lastName" type="text" placeholder="Escribe tu apellido" required autocomplete="family-name" />
+        </div>
 
-          <div class="field">
-            <label for="cedula">Cédula</label>
-            <input id="cedula" name="cedula" type="text" inputmode="numeric" placeholder="Solo números" required />
+        <div class="field">
+          <label for="cedula">Cédula</label>
+          <input id="cedula" name="cedula" type="text" inputmode="numeric" placeholder="Solo números" required autocomplete="off" />
+        </div>
+
+        <div class="field">
+          <label for="university">Universidad</label>
+          <input id="university" name="university" type="text" placeholder="Escribe tu universidad" required autocomplete="organization" />
+        </div>
+
+        <div class="field">
+          <label for="career">Carrera</label>
+          <select id="career" name="career" required>
+            <option value="" selected disabled>Selecciona tu carrera...</option>
+            <option>Ingeniería de Sistemas</option>
+            <option>Tecnología en Sistemas</option>
+            <option>Desarrollo de Software</option>
+            <option>Ingeniería de Software</option>
+            <option value="OTRA">Otra</option>
+          </select>
+          <div id="careerOtherWrap" class="field-inline hidden">
+            <input id="careerOther" type="text" placeholder="Ingrese su carrera (ej: Ingeniería Informática)" autocomplete="off" />
           </div>
         </div>
 
-        <div class="grid grid-3">
-          <div class="field">
-            <label for="university">Universidad</label>
-            <input id="university" name="university" type="text" placeholder="Ej. UNICUCES" required />
-          </div>
-
-          <div class="field">
-            <label for="career">Carrera</label>
-            <select id="career" name="career" required>
-              <option value="" selected disabled>Selecciona...</option>
-              <option>Ingeniería de Sistemas</option>
-              <option>Ingeniería de Software</option>
-              <option>Desarrollo de Software</option>
-              <option>Análisis de Datos</option>
-              <option>Otra</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label for="semester">Semestre</label>
-            <select id="semester" name="semester" required>
-              <option value="" selected disabled>Selecciona...</option>
-              <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
-              <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
-            </select>
+        <div class="field">
+          <label for="semester">Semestre</label>
+          <select id="semester" name="semester" required>
+            <option value="" selected disabled>Selecciona tu semestre...</option>
+            <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+            <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
+            <option value="OTRO">Otro</option>
+          </select>
+          <div id="semesterOtherWrap" class="field-inline hidden">
+            <input id="semesterOther" type="text" inputmode="numeric" placeholder="¿Qué semestre cursa? (solo números)" autocomplete="off" />
           </div>
         </div>
 
-        <div class="grid grid-2" id="rowOtherCareer" hidden>
-          <div class="field">
-            <label for="careerOther">¿Cuál?</label>
-            <input id="careerOther" name="careerOther" type="text" placeholder="Escribe tu carrera" />
-          </div>
-          <div></div>
+        <!-- Cargo a aspirar -->
+        <div class="field field-wide">
+          <label for="role">Cargo a aspirar</label>
+          <select id="role" name="role" required>
+            <option value="" selected disabled>Selecciona el cargo...</option>
+            <option value="Auxiliar de desarrollo">Auxiliar de desarrollo</option>
+            <option value="Desarrollador">Desarrollador</option>
+          </select>
         </div>
 
-        <div class="grid grid-2 compact-2">
-          <div class="field">
-            <label for="role">Cargo a aspirar</label>
-            <select id="role" name="role" required>
-              <option value="" selected disabled>Selecciona...</option>
-              <option>Desarrollador</option>
-              <option>QA</option>
-              <option>Analista</option>
-              <option>Soporte</option>
-              <option>Otro</option>
-            </select>
-          </div>
-
-          <div class="field">
+        <!-- Hoja de vida y Política juntos -->
+        <div class="field-wide cv-policy-container">
+          <div class="cv-upload-wrapper">
             <label for="cvFile">Hoja de vida (PDF / DOC / DOCX)</label>
             <input id="cvFile" name="cvFile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required />
-            <div class="hint">Máximo recomendado: 9 MB</div>
+            <small class="hint">Máximo recomendado: 8 MB</small>
           </div>
-        </div>
-
-        <div class="grid grid-2" id="rowOtherRole" hidden>
-          <div class="field">
-            <label for="roleOther">¿Cuál?</label>
-            <input id="roleOther" name="roleOther" type="text" placeholder="Escribe el cargo" />
+          
+          <!-- Política al lado del CV -->
+          <div class="policy-row">
+            <label class="checkline">
+              <input id="acceptPolicy" type="checkbox" />
+              <span>
+                Acepto la
+                <a href="politica-datos.html" target="_blank" rel="noopener">Política de tratamiento de datos</a>.
+              </span>
+            </label>
           </div>
-          <div></div>
-        </div>
-
-        <div class="divider"></div>
-
-        <div class="policy">
-          <label class="check">
-            <input type="checkbox" id="acceptPolicy" required />
-            <span>Acepto la <button type="button" class="linklike" id="btnOpenPolicy">Política de tratamiento de datos</button>.</span>
-          </label>
         </div>
 
         <div class="actions">
-          <button type="button" class="btn primary" id="btnStart">Iniciar evaluación</button>
+          <button id="btnStart" type="button" class="btn primary">
+            Iniciar evaluación
+          </button>
         </div>
 
-        <div class="formMsg" id="formMsg" role="status" aria-live="polite"></div>
+        <!-- Mensaje de error -->
+        <div id="errorMsg" class="error-message hidden" role="alert"></div>
+
+        <!-- Mensajes informativos -->
+        <div id="uiMsg" class="ui-msg hidden" role="status" aria-live="polite"></div>
       </form>
     </section>
 
-    <!-- EXAM -->
-    <section class="card" id="cardExam" hidden>
-      <div class="examHead">
-        <h2 class="examTitle">Preguntas</h2>
-        <div class="timerPill" id="timerPill" aria-live="polite">
-          <span class="timerLabel">Tiempo restante</span>
-          <span class="timerValue" id="timerValue">10:00</span>
+    <!-- CARD QUESTIONS -->
+    <section id="examCard" class="card hidden">
+      <div class="card-head card-head-split">
+        <div>
+          <h2>Preguntas</h2>
+          <p class="muted">Responde con claridad. No cierres la página durante la sesión.</p>
+        </div>
+
+        <div class="timerBox" aria-label="Tiempo restante">
+          <div class="timerLabel">Tiempo restante</div>
+          <div id="timer" class="timerValue">10:00</div>
         </div>
       </div>
 
-      <div class="qBox">
-        <div class="qPrompt" id="qPrompt"></div>
+      <div class="questionBox">
+        <div id="qText" class="qText">Cargando…</div>
+        <textarea id="qAnswer" class="answerBox" placeholder="Escribe tu respuesta aquí..." rows="10"></textarea>
 
-        <textarea id="answer" class="answer" rows="10" placeholder="Escribe tu respuesta..." spellcheck="false"></textarea>
-
-        <div class="examActions">
-          <button type="button" class="btn primary" id="btnNext">Continuar</button>
+        <div class="actions">
+          <button id="btnNext" type="button" class="btn primary">Continuar</button>
         </div>
-
-        <div class="formMsg" id="examMsg" role="status" aria-live="polite"></div>
       </div>
     </section>
 
-    <footer class="foot">LabCore Tech · Uso interno</footer>
-  </main>
-
-  <!-- MODAL: INFO INICIAL -->
-  <div class="modal" id="modalInfo" hidden>
-    <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="modalInfoTitle">
-      <div class="modalHead">
+    <!-- MODAL: info inicio -->
+    <div id="modalInfo" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop"></div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalInfoTitle">
+        <button class="modal-x" type="button" id="modalInfoClose" aria-label="Cerrar">×</button>
         <h3 id="modalInfoTitle">Información antes de iniciar</h3>
-        <button class="iconBtn" type="button" id="btnCloseInfo" aria-label="Cerrar">×</button>
-      </div>
 
-      <div class="modalBody">
-        <p>
-          Esta evaluación tiene una duración máxima de <b>10 min</b>.
+        <p class="modal-text">
+          Esta evaluación de ingreso tiene una duración máxima de <b>10 min</b>.
           Se recomienda disponer de este tiempo completo para responder con calma y sin interrupciones.
         </p>
-        <ul>
+
+        <ul class="modal-list">
           <li>Durante la sesión, evita recargar la página o cerrar la ventana.</li>
-          <li>Si se interrumpe la sesión, podrás reiniciar y continuar desde cero.</li>
+          <li>Si la sesión se interrumpe, la evaluación no podrá iniciarse nuevamente para este usuario.</li>
+          <li>Todas las actividades están siendo monitoreadas.</li>
         </ul>
-      </div>
 
-      <div class="modalActions">
-        <button type="button" class="btn ghost" id="btnCancelInfo">Cancelar</button>
-        <button type="button" class="btn primary" id="btnAcceptInfo">Acepto, continuar</button>
+        <div class="modal-actions">
+          <button class="btn" type="button" id="btnCancelStart">Cancelar</button>
+          <button class="btn primary" type="button" id="btnAcceptStart">Acepto, continuar</button>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- MODAL: POLÍTICA -->
-  <div class="modal" id="modalPolicy" hidden>
-    <div class="modalCard modalWide" role="dialog" aria-modal="true" aria-labelledby="modalPolicyTitle">
-      <div class="modalHead">
-        <h3 id="modalPolicyTitle">Política de tratamiento de datos</h3>
-        <button class="iconBtn" type="button" id="btnClosePolicy" aria-label="Cerrar">×</button>
-      </div>
-      <div class="modalBody policyFrameWrap">
-        <iframe class="policyFrame" src="politica-datos.html" title="Política de tratamiento de datos"></iframe>
-      </div>
-      <div class="modalActions">
-        <button type="button" class="btn primary" id="btnOkPolicy">Listo</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL: FINAL -->
-  <div class="modal" id="modalDone" hidden>
-    <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="modalDoneTitle">
-      <div class="modalHead">
+    <!-- MODAL: final -->
+    <div id="modalDone" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop"></div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalDoneTitle">
+        <button class="modal-x" type="button" id="modalDoneClose" aria-label="Cerrar">×</button>
         <h3 id="modalDoneTitle">Evaluación finalizada</h3>
-        <button class="iconBtn" type="button" id="btnCloseDone" aria-label="Cerrar">×</button>
-      </div>
-
-      <div class="modalBody">
-        <p>Tus respuestas serán remitidas satisfactoriamente al área encargada de LabCore Tech.</p>
-      </div>
-
-      <div class="modalActions">
-        <button type="button" class="btn primary" id="btnDoneOk">Continuar</button>
+        <p class="modal-text">
+          ✅ Tus respuestas han sido enviadas satisfactoriamente al área encargada de LabCore Tech.<br>
+        </p>
+        <div class="modal-actions">
+          <button class="btn primary" type="button" id="btnDoneOk">Continuar</button>
+        </div>
       </div>
     </div>
-  </div>
 
-  <script src="src/js/app.js"></script>
+  </main>
+
+  <script defer src="src/js/app.js"></script>
 </body>
 </html>
