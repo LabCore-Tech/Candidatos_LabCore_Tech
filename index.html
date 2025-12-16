@@ -57,52 +57,46 @@
         <div class="field">
           <label for="career">Carrera</label>
           <select id="career" name="career" required>
-            <option value="" selected disabled>Selecciona tu carrera...</option>
+            <option value="" selected disabled>Selecciona...</option>
             <option>Ingeniería de Sistemas</option>
             <option>Tecnología en Sistemas</option>
             <option>Desarrollo de Software</option>
             <option>Ingeniería de Software</option>
             <option value="OTRA">Otra</option>
           </select>
-          <div id="careerOtherWrap" class="field-inline hidden">
-            <input id="careerOther" type="text" placeholder="Ingrese su carrera (ej: Ingeniería Informática)" autocomplete="off" />
-          </div>
         </div>
 
         <div class="field">
           <label for="semester">Semestre</label>
           <select id="semester" name="semester" required>
-            <option value="" selected disabled>Selecciona tu semestre...</option>
+            <option value="" selected disabled>Selecciona...</option>
             <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
             <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
             <option value="OTRO">Otro</option>
           </select>
-          <div id="semesterOtherWrap" class="field-inline hidden">
-            <input id="semesterOther" type="text" inputmode="numeric" placeholder="¿Qué semestre cursa? (solo números)" autocomplete="off" />
-          </div>
         </div>
 
-        <!-- Cargo a aspirar -->
-        <div class="field field-wide">
+        <!-- Cargo -->
+        <div class="field">
           <label for="role">Cargo a aspirar</label>
           <select id="role" name="role" required>
-            <option value="" selected disabled>Selecciona el cargo...</option>
+            <option value="" selected disabled>Selecciona...</option>
             <option value="Auxiliar de desarrollo">Auxiliar de desarrollo</option>
             <option value="Desarrollador">Desarrollador</option>
           </select>
         </div>
 
-        <!-- Hoja de vida y Política juntos -->
-        <div class="field-wide cv-policy-container">
-          <div class="cv-upload-wrapper">
-            <label for="cvFile">Hoja de vida (PDF / DOC / DOCX)</label>
-            <input id="cvFile" name="cvFile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required />
-            <small class="hint">Máximo recomendado: 8 MB</small>
-          </div>
+        <!-- ÚLTIMA FILA: CV y checkbox en línea -->
+        <div class="field field-wide cv-field">
+          <label for="cvFile">Hoja de vida (PDF / DOC / DOCX)</label>
           
-          <!-- Política al lado del CV -->
-          <div class="policy-row">
-            <label class="checkline">
+          <div class="cv-policy-row">
+            <input id="cvFile" name="cvFile" type="file" 
+                   accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+                   required 
+                   style="flex: 1; min-width: 200px;" />
+            
+            <label class="policy-check">
               <input id="acceptPolicy" type="checkbox" />
               <span>
                 Acepto la
@@ -110,16 +104,17 @@
               </span>
             </label>
           </div>
+          
+          <small class="hint" style="margin-top: 4px;">Máximo recomendado: 8 MB</small>
         </div>
 
+        <!-- Botón centrado -->
         <div class="actions">
           <button id="btnStart" type="button" class="btn primary">
             Iniciar evaluación
           </button>
+          <div id="formError" class="form-error"></div>
         </div>
-
-        <!-- Mensaje de error -->
-        <div id="errorMsg" class="error-message hidden" role="alert"></div>
 
         <!-- Mensajes informativos -->
         <div id="uiMsg" class="ui-msg hidden" role="status" aria-live="polite"></div>
@@ -142,10 +137,11 @@
 
       <div class="questionBox">
         <div id="qText" class="qText">Cargando…</div>
-        <textarea id="qAnswer" class="answerBox" placeholder="Escribe tu respuesta aquí..." rows="10"></textarea>
+        <textarea id="qAnswer" class="answerBox" placeholder="Escribe tu respuesta..." rows="8"></textarea>
 
         <div class="actions">
           <button id="btnNext" type="button" class="btn primary">Continuar</button>
+          <div id="examError" class="form-error"></div>
         </div>
       </div>
     </section>
@@ -164,8 +160,7 @@
 
         <ul class="modal-list">
           <li>Durante la sesión, evita recargar la página o cerrar la ventana.</li>
-          <li>Si la sesión se interrumpe, la evaluación no podrá iniciarse nuevamente para este usuario.</li>
-          <li>Todas las actividades están siendo monitoreadas.</li>
+          <li>Si la sesión se interrumpe, la evaluación no podrá iniciarse nuevamente desde este dispositivo.</li>
         </ul>
 
         <div class="modal-actions">
@@ -182,7 +177,7 @@
         <button class="modal-x" type="button" id="modalDoneClose" aria-label="Cerrar">×</button>
         <h3 id="modalDoneTitle">Evaluación finalizada</h3>
         <p class="modal-text">
-          ✅ Tus respuestas han sido enviadas satisfactoriamente al área encargada de LabCore Tech.<br>
+          Tus respuestas serán remitidas satisfactoriamente al área encargada de LabCore Tech.
         </p>
         <div class="modal-actions">
           <button class="btn primary" type="button" id="btnDoneOk">Continuar</button>

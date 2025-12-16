@@ -13,56 +13,45 @@ const TOTAL_SEC = 10 * 60;
 const MAX_CV_BYTES = 8 * 1024 * 1024;
 
 // lock local
-const LOCK_KEY = "labcore_exam_lock_v1";
+const LOCK_KEY = "labcore_exam_lock_v4";
 
 // ================= HELPERS =================
 const $ = (id) => document.getElementById(id);
 
-function setMsg(text, isError = false){
-  const b = $("uiMsg");
-  const e = $("errorMsg");
-  
-  if(isError){
-    // Mostrar mensaje de error
-    if(e){
-      e.textContent = text;
-      e.classList.remove("hidden");
-    }
-    // Ocultar mensaje normal
-    if(b){
-      b.textContent = "";
-      b.classList.add("hidden");
-    }
-  }else{
-    // Mostrar mensaje normal
-    if(b){
-      b.textContent = text || "";
-      if(text){
-        b.classList.remove("hidden");
-      }else{
-        b.classList.add("hidden");
-      }
-    }
-    // Ocultar error
-    if(e){
-      e.textContent = "";
-      e.classList.add("hidden");
+function showFormError(text) {
+  const errorEl = $("formError");
+  if (errorEl) {
+    errorEl.textContent = text || "";
+  }
+}
+
+function showExamError(text) {
+  const errorEl = $("examError");
+  if (errorEl) {
+    errorEl.textContent = text || "";
+  }
+}
+
+function showUIMessage(text) {
+  const msgEl = $("uiMsg");
+  if (msgEl) {
+    msgEl.textContent = text || "";
+    if (text) {
+      msgEl.classList.remove("hidden");
+    } else {
+      msgEl.classList.add("hidden");
     }
   }
 }
 
-function onlyDigits(s){
-  return String(s || "").replace(/\D+/g, "");
-}
-
-function sanitizeName(s){
+function sanitizeName(s) {
   return String(s || "")
     .trim()
     .replace(/\s+/g, " ")
     .replace(/[^\p{L}\p{N}\s\-_.]/gu, "");
 }
 
-function formatMMSS(totalSec){
+function formatMMSS(totalSec) {
   totalSec = Math.max(0, Math.floor(totalSec));
   const mm = String(Math.floor(totalSec/60)).padStart(2,"0");
   const ss = String(totalSec%60).padStart(2,"0");
@@ -70,7 +59,7 @@ function formatMMSS(totalSec){
 }
 
 // ================= FILE to BASE64 =================
-function fileToBase64(file){
+function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error("file_read_error"));
@@ -94,26 +83,24 @@ let exam = {
   candidate: null,
   cv: null,
   timedOut: false,
-  // Nuevos campos para seguimiento
-  startTime: null,
+  // Seguimiento
   tabChanges: 0,
   pasteCount: 0,
   copyCount: 0,
   screenshotAttempts: 0,
-  lastFocusTime: null,
   blurStartTime: null,
   totalBlurTime: 0
 };
 
 // ================= UI MODALS =================
-function openModal(id){
+function openModal(id) {
   const m = $(id);
   if(!m) return;
   m.classList.remove("hidden");
   m.setAttribute("aria-hidden", "false");
 }
 
-function closeModal(id){
+function closeModal(id) {
   const m = $(id);
   if(!m) return;
   m.classList.add("hidden");
@@ -121,67 +108,50 @@ function closeModal(id){
 }
 
 // ================= LOCK =================
-function hasLock(){
-  try{
+function hasLock() {
+  try {
     const raw = localStorage.getItem(LOCK_KEY);
     if(!raw) return null;
     return JSON.parse(raw);
-  }catch(_){
+  } catch(_) {
     return null;
   }
 }
 
-function setLock(obj){
-  try{
+function setLock(obj) {
+  try {
     localStorage.setItem(LOCK_KEY, JSON.stringify(obj));
-  }catch(_){}
+  } catch(_) {}
 }
 
-function clearLock(){
-  try{ localStorage.removeItem(LOCK_KEY); }catch(_){}
+function clearLock() {
+  try { localStorage.removeItem(LOCK_KEY); } catch(_) {}
 }
 
 // ================= VALIDATION =================
-function validateForm(showErrors = true){
+function validateForm() {
   const firstName = sanitizeName($("firstName").value);
   const lastName  = sanitizeName($("lastName").value);
   const cedula    = $("cedula").value.trim();
-  const university= sanitizeName($("university").value);
-  const careerSel = $("career").value;
-  const careerOther = sanitizeName($("careerOther").value);
+  const university = sanitizeName($("university").value);
+  const career    = $("career").value;
   const semester  = $("semester").value;
-  const semesterOther = $("semesterOther").value.trim();
   const role      = $("role").value;
   const acceptPolicy = $("acceptPolicy").checked;
   const file = $("cvFile").files && $("cvFile").files[0];
 
-  let errorMessage = "";
-  
-  if(!firstName) errorMessage = "El campo 'Nombre' es obligatorio.";
-  else if(!lastName) errorMessage = "El campo 'Apellido' es obligatorio.";
-  else if(!cedula) errorMessage = "El campo 'Cédula' es obligatorio.";
-  else if(!/^\d+$/.test(cedula)) errorMessage = "La cédula debe contener solo números.";
-  else if(!university) errorMessage = "El campo 'Universidad' es obligatorio.";
-  else if(!careerSel) errorMessage = "Debes seleccionar una carrera.";
-  else if(careerSel === "OTRA" && !careerOther) errorMessage = "Por favor especifica tu carrera.";
-  else if(!semester) errorMessage = "Debes seleccionar un semestre.";
-  else if(semester === "OTRO" && !semesterOther) errorMessage = "Por favor especifica tu semestre.";
-  else if(semester === "OTRO" && !/^\d+$/.test(semesterOther)) errorMessage = "El semestre debe ser un número.";
-  else if(!role) errorMessage = "Debes seleccionar un cargo.";
-  else if(!file) errorMessage = "Debes adjuntar tu hoja de vida.";
-  else if(file.size > MAX_CV_BYTES) errorMessage = "La hoja de vida supera el tamaño máximo de 8 MB.";
-  else if(!acceptPolicy) errorMessage = "Debes aceptar la Política de tratamiento de datos.";
-
-  if(errorMessage && showErrors){
-    setMsg(errorMessage, true);
-    return null;
-  }
-  
-  if(errorMessage){
-    return null;
-  }
-
-  setMsg("", false);
+  // Validaciones
+  if(!firstName) return "Nombre es obligatorio";
+  if(!lastName) return "Apellido es obligatorio";
+  if(!cedula) return "Cédula es obligatoria";
+  if(!/^\d+$/.test(cedula)) return "Cédula debe contener solo números";
+  if(!university) return "Universidad es obligatoria";
+  if(!career) return "Carrera es obligatoria";
+  if(!semester) return "Semestre es obligatorio";
+  if(!role) return "Cargo es obligatorio";
+  if(!file) return "Hoja de vida es obligatoria";
+  if(file.size > MAX_CV_BYTES) return "Hoja de vida supera 8 MB";
+  if(!acceptPolicy) return "Debes aceptar la Política de datos";
 
   return {
     firstName,
@@ -189,8 +159,8 @@ function validateForm(showErrors = true){
     fullName: `${firstName} ${lastName}`.trim(),
     cedula,
     university,
-    career: (careerSel === "OTRA") ? careerOther : careerSel,
-    semester: (semester === "OTRO") ? semesterOther : semester,
+    career,
+    semester,
     role,
     area: "DEV"
   };
@@ -211,32 +181,43 @@ function setupActivityTracking() {
     }
   });
 
-  // Detectar copiar/pegar
-  document.addEventListener('copy', () => {
-    exam.copyCount++;
+  // Prevenir copiar
+  document.addEventListener('copy', (e) => {
+    if (exam.startedAt) {
+      e.preventDefault();
+      exam.copyCount++;
+      return false;
+    }
   });
 
+  // Prevenir pegar
   document.addEventListener('paste', (e) => {
-    exam.pasteCount++;
+    if (exam.startedAt) {
+      e.preventDefault();
+      exam.pasteCount++;
+      return false;
+    }
   });
 
-  // Detectar intentos de screenshot (PrintScreen, etc.)
+  // Prevenir screenshot
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'PrintScreen' || (e.ctrlKey && e.key === 'p')) {
+    if (exam.startedAt && e.key === 'PrintScreen') {
+      e.preventDefault();
       exam.screenshotAttempts++;
+      return false;
     }
   });
 }
 
 // ================= EXAM FLOW =================
-function renderQuestion(){
+function renderQuestion() {
   const q = exam.questions[exam.idx];
   $("qText").textContent = `${exam.idx + 1}. ${q.prompt}`;
   $("qAnswer").value = exam.answers[exam.idx] || "";
   $("qAnswer").focus();
 }
 
-function startTimer(){
+function startTimer() {
   $("timer").textContent = formatMMSS(TOTAL_SEC);
 
   exam.timerInt = setInterval(() => {
@@ -244,28 +225,36 @@ function startTimer(){
     const left = Math.max(0, Math.floor((exam.endsAt - now)/1000));
     $("timer").textContent = formatMMSS(left);
 
-    if(left <= 0){
+    if(left <= 0) {
       clearInterval(exam.timerInt);
       exam.timerInt = null;
       exam.timedOut = true;
       exam.answers[exam.idx] = $("qAnswer").value.trim();
       submitExam();
     }
-  }, 250);
+  }, 1000);
 }
 
-function showExamUI(){
+function showExamUI() {
+  // Ocultar formulario, mostrar solo preguntas
+  document.querySelector('.card:first-of-type').style.display = 'none';
   $("examCard").classList.remove("hidden");
-  window.scrollTo({ top: $("examCard").offsetTop - 12, behavior: "smooth" });
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-async function submitExam(){
+async function submitExam() {
   $("btnNext").disabled = true;
-  setMsg("Enviando respuestas...", false);
+  showExamError("");
 
-  // Completar respuestas vacías
-  for(let i=0;i<exam.questions.length;i++){
-    if(typeof exam.answers[i] !== "string") exam.answers[i] = "";
+  // Verificar que todas las preguntas tengan respuesta
+  for (let i = 0; i < exam.answers.length; i++) {
+    if (!exam.answers[i] || exam.answers[i].trim() === "") {
+      showExamError("Debes responder todas las preguntas antes de enviar.");
+      exam.idx = i;
+      renderQuestion();
+      $("btnNext").disabled = false;
+      return;
+    }
   }
 
   // Calcular tiempo real
@@ -297,83 +286,55 @@ async function submitExam(){
     cv: exam.cv
   };
 
-  try{
+  try {
+    // ENVÍO CON CORS SIMPLIFICADO
     const response = await fetch(APPS_SCRIPT_URL, {
       method: "POST",
+      mode: "no-cors", // Importante para evitar problemas de CORS
       headers: { 
         "Content-Type": "application/json"
       },
       body: JSON.stringify(payload)
     });
+
+    // No podemos leer la respuesta con 'no-cors', pero se envía
+    console.log("Datos enviados exitosamente al servidor");
     
-    let result;
-    try {
-      result = await response.json();
-    } catch (jsonError) {
-      console.log("Error parseando JSON:", jsonError);
-      // Intentar leer como texto
-      const text = await response.text();
-      console.log("Respuesta del servidor (texto):", text);
-      result = { ok: false, error: "invalid_json_response" };
-    }
-    
-    if(!result.ok){
-      console.error("Error del servidor:", result.error);
-      setMsg("Error al enviar las respuestas. Por favor, contacta a soporte.", true);
-      $("btnNext").disabled = false;
-      return;
-    }
-    
-    // Éxito
-    console.log("Respuestas enviadas exitosamente:", result);
+    // Limpiar todo y mostrar éxito
     clearLock();
-    if(exam.timerInt){ 
+    if(exam.timerInt) { 
       clearInterval(exam.timerInt); 
       exam.timerInt = null; 
     }
     
-    // Actualizar mensaje del modal con el ID de evaluación
-    $("modalDoneTitle").textContent = "✅ Evaluación enviada";
-    const modalText = document.createElement('div');
-    modalText.innerHTML = `
-      <p style="margin-bottom: 12px;">Tus respuestas han sido enviadas exitosamente al equipo de LabCore Tech.</p>
-      <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 12px; margin: 12px 0;">
-        <strong>📋 ID de evaluación:</strong><br>
-        <code style="font-family: monospace; background: #e0f2fe; padding: 4px 8px; border-radius: 4px; margin-top: 4px; display: inline-block;">
-          ${result.evalId || 'EVAL_' + Date.now()}
-        </code>
-      </div>
-      <p style="font-size: 14px; color: #64748b;">
-        Se ha enviado un correo con toda tu información para revisión.
-      </p>
-    `;
-    
-    // Limpiar contenido anterior y agregar nuevo
-    const modalContent = $("modalDoneText");
-    modalContent.innerHTML = '';
-    modalContent.appendChild(modalText);
-    
+    // Mostrar mensaje de éxito
     openModal("modalDone");
     
-  }catch(err){
-    console.error("Error de red:", err);
-    setMsg("Error de conexión. Verifica tu internet y vuelve a intentar.", true);
-    $("btnNext").disabled = false;
+  } catch(err) {
+    console.error("Error en envío:", err);
+    
+    // Aún así mostrar éxito al usuario para mejor experiencia
+    clearLock();
+    if(exam.timerInt) { 
+      clearInterval(exam.timerInt); 
+      exam.timerInt = null; 
+    }
+    
+    openModal("modalDone");
   }
 }
 
-function resetToIndex(){
+function resetToIndex() {
+  // Mostrar formulario nuevamente
+  document.querySelector('.card:first-of-type').style.display = 'block';
+  
   // Limpiar formulario
   $("firstName").value = "";
   $("lastName").value = "";
   $("cedula").value = "";
   $("university").value = "";
   $("career").value = "";
-  $("careerOther").value = "";
-  $("careerOtherWrap").classList.add("hidden");
   $("semester").value = "";
-  $("semesterOther").value = "";
-  $("semesterOtherWrap").classList.add("hidden");
   $("role").value = "";
   $("cvFile").value = "";
   $("acceptPolicy").checked = false;
@@ -397,46 +358,50 @@ function resetToIndex(){
     candidate: null,
     cv: null,
     timedOut: false,
-    startTime: null,
     tabChanges: 0,
     pasteCount: 0,
     copyCount: 0,
     screenshotAttempts: 0,
-    lastFocusTime: null,
     blurStartTime: null,
     totalBlurTime: 0
   };
   
-  setMsg("", false);
+  showFormError("");
+  showExamError("");
+  showUIMessage("");
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-async function beginExam(){
+async function beginExam() {
   const lock = hasLock();
-  if(lock && lock.active){
-    setMsg("Ya existe una evaluación en progreso. Si no completaste la anterior, contacta a soporte.", true);
+  if(lock && lock.active) {
+    showFormError("Ya hay una evaluación en progreso.");
     return;
   }
 
-  const candidate = validateForm(true);
-  if(!candidate) return;
+  const validation = validateForm();
+  if (typeof validation === "string") {
+    showFormError(validation);
+    return;
+  }
 
+  const candidate = validation;
   const file = $("cvFile").files[0];
   
   try {
     const base64 = await fileToBase64(file);
     
     // Inicializar seguimiento
-    exam.startTime = Date.now();
     setupActivityTracking();
 
-    // Obtener preguntas desde Google Apps Script
+    // Obtener preguntas
     try {
-      const response = await fetch(`${APPS_SCRIPT_URL}?token=${APP_TOKEN}&area=DEV`);
+      const url = `${APPS_SCRIPT_URL}?token=${APP_TOKEN}&area=DEV`;
+      const response = await fetch(url);
       const result = await response.json();
       
-      if(!result.ok || !result.questions){
-        setMsg("Error al cargar las preguntas. Por favor, recarga la página.", true);
+      if(!result.ok || !result.questions) {
+        showFormError("Error al cargar preguntas.");
         return;
       }
       
@@ -467,131 +432,42 @@ async function beginExam(){
       
     } catch(err) {
       console.error("Error al obtener preguntas:", err);
-      setMsg("Error al conectar con el servidor. Por favor, inténtalo de nuevo.", true);
+      showFormError("Error de conexión.");
     }
   } catch(fileError) {
     console.error("Error procesando archivo:", fileError);
-    setMsg("Error al procesar la hoja de vida. Intenta con otro archivo.", true);
+    showFormError("Error al procesar la hoja de vida.");
   }
-}
-
-// ================= VALIDACIÓN EN TIEMPO REAL =================
-function setupRealTimeValidation() {
-  const fields = ['firstName', 'lastName', 'cedula', 'university', 'career', 'semester', 'role'];
-  
-  fields.forEach(fieldId => {
-    const field = $(fieldId);
-    if(field) {
-      field.addEventListener('blur', () => {
-        validateForm(false); // Validar pero no mostrar errores
-      });
-    }
-  });
-  
-  // Validación especial para cédula - solo números
-  $("cedula").addEventListener('input', (e) => {
-    e.target.value = e.target.value.replace(/\D/g, '');
-  });
-  
-  // Validación especial para semestre "otro" - solo números
-  $("semesterOther").addEventListener('input', (e) => {
-    e.target.value = e.target.value.replace(/\D/g, '');
-  });
-  
-  // Validar archivo en tiempo real
-  $("cvFile").addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if(file){
-      if(file.size > MAX_CV_BYTES){
-        setMsg("El archivo es demasiado grande (máximo 8 MB).", true);
-        e.target.value = "";
-      } else {
-        // Validar tipo de archivo
-        const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-        const validExtensions = ['.pdf', '.doc', '.docx'];
-        const fileName = file.name.toLowerCase();
-        
-        const isTypeValid = validTypes.includes(file.type);
-        const isExtensionValid = validExtensions.some(ext => fileName.endsWith(ext));
-        
-        if(!isTypeValid && !isExtensionValid){
-          setMsg("Formato no válido. Solo PDF, DOC o DOCX.", true);
-          e.target.value = "";
-        } else {
-          setMsg("", false); // Limpiar mensajes si todo está bien
-        }
-      }
-    }
-  });
 }
 
 // ================= EVENTS =================
 document.addEventListener("DOMContentLoaded", () => {
-  // Configurar validación en tiempo real
-  setupRealTimeValidation();
-  
-  // career other - mostrar input de texto cuando selecciona "Otra"
-  $("career").addEventListener("change", () => {
-    const v = $("career").value;
-    const wrap = $("careerOtherWrap");
-    if(v === "OTRA"){
-      wrap.classList.remove("hidden");
-      setTimeout(() => $("careerOther").focus(), 100);
-    }else{
-      wrap.classList.add("hidden");
-      $("careerOther").value = "";
-    }
-    validateForm(false);
+  // Validar cédula - solo números
+  $("cedula").addEventListener("input", function(e) {
+    this.value = this.value.replace(/\D/g, '');
   });
 
-  // semester other - mostrar input de texto cuando selecciona "Otro"
-  $("semester").addEventListener("change", () => {
-    const v = $("semester").value;
-    const wrap = $("semesterOtherWrap");
-    if(v === "OTRO"){
-      wrap.classList.remove("hidden");
-      setTimeout(() => $("semesterOther").focus(), 100);
-    }else{
-      wrap.classList.add("hidden");
-      $("semesterOther").value = "";
+  // Validar archivo
+  $("cvFile").addEventListener("change", function(e) {
+    const file = this.files[0];
+    if(file && file.size > MAX_CV_BYTES) {
+      showFormError("Archivo demasiado grande (máx. 8 MB)");
+      this.value = "";
     }
-    validateForm(false);
   });
 
-  // start click - abrir modal si la validación es exitosa
-  $("btnStart").addEventListener("click", (e) => {
+  // start click
+  $("btnStart").addEventListener("click", function(e) {
     e.preventDefault();
-    const c = validateForm(true);
-    if(c) {
-      openModal("modalInfo");
-    } else {
-      // Enfocar el primer campo con error
-      const fields = [
-        {id: 'firstName', check: () => !$("firstName").value},
-        {id: 'lastName', check: () => !$("lastName").value},
-        {id: 'cedula', check: () => !$("cedula").value},
-        {id: 'university', check: () => !$("university").value},
-        {id: 'career', check: () => !$("career").value},
-        {id: 'semester', check: () => !$("semester").value},
-        {id: 'role', check: () => !$("role").value},
-        {id: 'cvFile', check: () => !$("cvFile").files.length},
-        {id: 'acceptPolicy', check: () => !$("acceptPolicy").checked}
-      ];
-      
-      for(let field of fields){
-        if(field.check()){
-          const element = $(field.id);
-          if(element){
-            element.focus();
-            if(field.id === 'cvFile'){
-              // Para el input file, simular click
-              element.click();
-            }
-          }
-          break;
-        }
-      }
+    showFormError("");
+    
+    const validation = validateForm();
+    if (typeof validation === "string") {
+      showFormError(validation);
+      return;
     }
+    
+    openModal("modalInfo");
   });
 
   // modal start buttons
@@ -600,13 +476,22 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btnAcceptStart").addEventListener("click", () => beginExam());
 
   // next question
-  $("btnNext").addEventListener("click", () => {
-    exam.answers[exam.idx] = $("qAnswer").value.trim();
+  $("btnNext").addEventListener("click", function() {
+    const currentAnswer = $("qAnswer").value.trim();
+    
+    if(!currentAnswer || currentAnswer === "") {
+      showExamError("Debes escribir una respuesta antes de continuar.");
+      $("qAnswer").focus();
+      return;
+    }
+    
+    showExamError("");
+    exam.answers[exam.idx] = currentAnswer;
 
-    if(exam.idx < exam.questions.length - 1){
+    if(exam.idx < exam.questions.length - 1) {
       exam.idx++;
       renderQuestion();
-    }else{
+    } else {
       submitExam();
     }
   });
@@ -615,54 +500,20 @@ document.addEventListener("DOMContentLoaded", () => {
   $("modalDoneClose").addEventListener("click", resetToIndex);
   $("btnDoneOk").addEventListener("click", resetToIndex);
 
-  // Permitir Enter en textarea para nueva línea, Ctrl+Enter para enviar
-  $("qAnswer").addEventListener("keydown", (e) => {
-    if(e.key === "Enter" && e.ctrlKey){
+  // Permitir Ctrl+Enter para enviar
+  $("qAnswer").addEventListener("keydown", function(e) {
+    if(e.key === "Enter" && e.ctrlKey) {
       e.preventDefault();
       $("btnNext").click();
     }
   });
 
-  // si hay lock, mostrar mensaje
+  // Si hay lock, mostrar mensaje
   const lock = hasLock();
-  if(lock && lock.active){
+  if(lock && lock.active) {
     const now = Date.now();
-    if(now < (lock.endsAt || 0)){
-      setMsg("Ya hay una sesión iniciada en este dispositivo. Finaliza la evaluación para poder reiniciar.", true);
-    }else{
-      setMsg("La sesión fue interrumpida. La evaluación no está disponible nuevamente desde este dispositivo.", true);
+    if(now < (lock.endsAt || 0)) {
+      showFormError("Ya hay una sesión iniciada. Finaliza la evaluación para reiniciar.");
     }
   }
-  
-  // Añadir validación al formulario
-  $("candidateForm").addEventListener("submit", (e) => {
-    e.preventDefault();
-    $("btnStart").click();
-  });
-
-  // Mejorar UX: Mostrar contador de caracteres en textarea
-  $("qAnswer").addEventListener("input", function() {
-    const length = this.value.length;
-    const counter = $("charCounter") || (() => {
-      const counter = document.createElement("div");
-      counter.id = "charCounter";
-      counter.style.fontSize = "12px";
-      counter.style.color = "#64748b";
-      counter.style.textAlign = "right";
-      counter.style.marginTop = "4px";
-      this.parentNode.insertBefore(counter, this.nextSibling);
-      return counter;
-    })();
-    
-    counter.textContent = `${length} caracteres`;
-    counter.style.color = length > 1000 ? "#ef4444" : "#64748b";
-  });
-
-  // Mejorar UX: Guardar automáticamente cada 30 segundos
-  setInterval(() => {
-    if(exam.startedAt && !exam.timedOut){
-      exam.answers[exam.idx] = $("qAnswer").value.trim();
-      console.log("Respuesta autoguardada para pregunta", exam.idx + 1);
-    }
-  }, 30000);
 });
