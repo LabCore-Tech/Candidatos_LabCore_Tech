@@ -287,33 +287,27 @@ async function submitExam() {
   };
 
   try {
-    // ENVÍO CON CORS SIMPLIFICADO
+    // ENVÍO DIRECTO
     const response = await fetch(APPS_SCRIPT_URL, {
       method: "POST",
-      mode: "no-cors", // Importante para evitar problemas de CORS
       headers: { 
         "Content-Type": "application/json"
       },
       body: JSON.stringify(payload)
     });
 
-    // No podemos leer la respuesta con 'no-cors', pero se envía
-    console.log("Datos enviados exitosamente al servidor");
-    
-    // Limpiar todo y mostrar éxito
+    // NO ESPERAR RESPUESTA - Mostrar éxito inmediato
     clearLock();
     if(exam.timerInt) { 
       clearInterval(exam.timerInt); 
       exam.timerInt = null; 
     }
     
-    // Mostrar mensaje de éxito
     openModal("modalDone");
     
   } catch(err) {
     console.error("Error en envío:", err);
-    
-    // Aún así mostrar éxito al usuario para mejor experiencia
+    // Aún así mostrar éxito al usuario
     clearLock();
     if(exam.timerInt) { 
       clearInterval(exam.timerInt); 
@@ -394,14 +388,22 @@ async function beginExam() {
     // Inicializar seguimiento
     setupActivityTracking();
 
-    // Obtener preguntas
+    // Obtener preguntas - FIX IMPORTANTE: URL sin parámetros extra
     try {
-      const url = `${APPS_SCRIPT_URL}?token=${APP_TOKEN}&area=DEV`;
-      const response = await fetch(url);
+      // Usar URL limpia
+      const url = APPS_SCRIPT_URL + `?token=${encodeURIComponent(APP_TOKEN)}`;
+      console.log("Fetching questions from:", url);
+      
+      const response = await fetch(url, {
+        method: "GET",
+        mode: "cors"
+      });
+      
       const result = await response.json();
+      console.log("Result from server:", result);
       
       if(!result.ok || !result.questions) {
-        showFormError("Error al cargar preguntas.");
+        showFormError("Error al cargar preguntas: " + (result.error || "Desconocido"));
         return;
       }
       
@@ -432,7 +434,7 @@ async function beginExam() {
       
     } catch(err) {
       console.error("Error al obtener preguntas:", err);
-      showFormError("Error de conexión.");
+      showFormError("Error de conexión: " + err.message);
     }
   } catch(fileError) {
     console.error("Error procesando archivo:", fileError);
