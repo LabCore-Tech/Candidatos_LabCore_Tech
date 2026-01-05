@@ -1,565 +1,635 @@
-/* =========================
-   LabCore Tech - Evaluación
-   ========================= */
+/* LabCore - Evaluación de ingreso (front)
+   - Carga cargos (positions)
+   - Precarga evaluación (questions) por cargo
+   - Habilita "Iniciar prueba" SOLO cuando el formulario es válido + hay preguntas
+   - Step 1: Datos del postulante
+   - Step 2: Solo pregunta + textarea de respuesta (responsive)
+*/
 
-// ================= CONFIG =================
-//const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwPXU5NIaqAS2g2AFDel20Ho5HAURSyo6XPXimr68hwTw36IvwU4mVSKt1Ln-8xrjbk2g/exec";
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzb4Dgp1ZslymobzMLP2mAH6bBJa_KIvqqgyKscA-6k4c6laM2H8S9ivv2rCVJKeEyF/exec";
-const APP_TOKEN = "9fA2xQe7MZk4T8Rj3P0LwB1YhD5C6mSNaVUp";
+// 🔐 API KEY pública para evaluación (Front)
+window.PUBLIC_EVAL_API_KEY =
+  "pt_eval_c21c285a5edf133c981b961910f2c26140712e5a6efbda98";
 
-// 10 minutos total
-const TOTAL_SEC = 10 * 60;
+(() => {
+  // =============================
+  // Config
+  // =============================
+  const API_BASE = "https://protrack-49um.onrender.com";
 
-// max recomendado 8 MB
-const MAX_CV_BYTES = 8 * 1024 * 1024;
+  const ENDPOINT_POSITIONS = `${API_BASE}/api/gh/public/positions`;
+  const ENDPOINT_EVAL = `${API_BASE}/api/gh/public/eval`; // ?position_id=xxx
+  const ENDPOINT_SUBMIT = `${API_BASE}/api/gh/public/submit`;
 
-// lock local
-const LOCK_KEY = "labcore_exam_lock_v4";
+  const metaKey =
+    document
+      .querySelector('meta[name="PUBLIC_EVAL_API_KEY"]')
+      ?.getAttribute("content") || "";
 
-// ================= HELPERS =================
-const $ = (id) => document.getElementById(id);
+  const PUBLIC_KEY = window.PUBLIC_EVAL_API_KEY || metaKey || "";
 
-function showFormError(text) {
-  const errorEl = $("formError");
-  if (errorEl) {
-    errorEl.textContent = text || "";
-  }
-}
+  // =============================
+  // DOM
+  // =============================
+  const $ = (id) => document.getElementById(id);
 
-function showExamError(text) {
-  const errorEl = $("examError");
-  if (errorEl) {
-    errorEl.textContent = text || "";
-  }
-}
+  const form = $("candidateForm");
 
-function showUIMessage(text) {
-  const msgEl = $("uiMsg");
-  if (msgEl) {
-    msgEl.textContent = text || "";
-    if (text) {
-      msgEl.classList.remove("hidden");
-    } else {
-      msgEl.classList.add("hidden");
-    }
-  }
-}
+  const firstName = $("firstName");
+  const lastName = $("lastName");
+  const cedula = $("cedula");
 
-function sanitizeName(s) {
-  return String(s || "")
-    .trim()
-    .replace(/\s+/g, " ")
-    .replace(/[^\p{L}\p{N}\s\-_.]/gu, "");
-}
+  const email = $("email");
+  const phone = $("phone");
+  const github = $("github");
+  const linkedin = $("linkedin");
 
-function formatMMSS(totalSec) {
-  totalSec = Math.max(0, Math.floor(totalSec));
-  const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
-  const ss = String(totalSec % 60).padStart(2, "0");
-  return `${mm}:${ss}`;
-}
+  const university = $("university");
+  const career = $("career");
+  const semester = $("semester");
+  const roleSelect = $("role");
 
-// ================= FILE to BASE64 =================
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("file_read_error"));
-    reader.onload = () => {
-      const res = reader.result || "";
-      const base64 = String(res).split(",")[1] || "";
-      resolve(base64);
-    };
-    reader.readAsDataURL(file);
-  });
-}
+  const cvFile = $("cvFile");
+  const cvPicker = $("cvPicker");
 
-// ================= STATE =================
-let exam = {
-  startedAt: null,
-  endsAt: null,
-  timerInt: null,
-  questions: [],
-  idx: 0,
-  answers: [],
-  candidate: null,
-  cv: null,
-  timedOut: false,
-  // Seguimiento
-  tabChanges: 0,
-  pasteCount: 0,
-  copyCount: 0,
-  screenshotAttempts: 0,
-  blurStartTime: null,
-  totalBlurTime: 0
-};
+  const acceptPolicy = $("acceptPolicy");
 
-// ================= UI MODALS =================
-function openModal(id) {
-  const m = $(id);
-  if (!m) return;
-  m.classList.remove("hidden");
-  m.setAttribute("aria-hidden", "false");
-}
+  const btnStart = $("btnStart");
+  const formError = $("formError");
+  const uiMsg = $("uiMsg");
 
-function closeModal(id) {
-  const m = $(id);
-  if (!m) return;
-  m.classList.add("hidden");
-  m.setAttribute("aria-hidden", "true");
-}
+  const examCard = $("examCard");
+  const timerEl = $("timer");
+  let qTextEl = $("qText");
+  let qAnswerEl = $("qAnswer");
+  const questionHost = $("questionHost");
 
-// ================= LOCK =================
-function hasLock() {
-  try {
-    const raw = localStorage.getItem(LOCK_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch (_) {
-    return null;
-  }
-}
+  const btnPrev = $("btnPrev");
+  const btnNext = $("btnNext");
+  const btnSubmit = $("btnSubmit");
 
-function setLock(obj) {
-  try {
-    localStorage.setItem(LOCK_KEY, JSON.stringify(obj));
-  } catch (_) {}
-}
+  const examError = $("examError");
 
-function clearLock() {
-  try {
-    localStorage.removeItem(LOCK_KEY);
-  } catch (_) {}
-}
+  // Modales
+  const modalInfo = $("modalInfo");
+  const btnContinue = $("btnContinue");
 
-// ================= VALIDATION =================
-function validateForm() {
-  const firstName = sanitizeName($("firstName").value);
-  const lastName = sanitizeName($("lastName").value);
-  const cedula = $("cedula").value.trim();
-  const university = sanitizeName($("university").value);
-  const career = $("career").value;
-  const semester = $("semester").value;
-  const role = $("role").value;
-  const acceptPolicy = $("acceptPolicy").checked;
-  const file = $("cvFile").files && $("cvFile").files[0];
+  const modalDone = $("modalDone");
+  const modalDoneClose = $("modalDoneClose");
+  const btnDoneOk = $("btnDoneOk");
 
-  // Validaciones
-  if (!firstName) return "Nombre es obligatorio";
-  if (!lastName) return "Apellido es obligatorio";
-  if (!cedula) return "Cédula es obligatoria";
-  if (!/^\d+$/.test(cedula)) return "Cédula debe contener solo números";
-  if (!university) return "Universidad es obligatoria";
-  if (!career) return "Carrera es obligatoria";
-  if (!semester) return "Semestre es obligatorio";
-  if (!role) return "Cargo es obligatorio";
-  if (!file) return "Hoja de vida es obligatoria";
-  if (file.size > MAX_CV_BYTES) return "Hoja de vida supera 8 MB";
-  if (!acceptPolicy) return "Debes aceptar la Política de datos";
-
-  return {
-    firstName,
-    lastName,
-    fullName: `${firstName} ${lastName}`.trim(),
-    cedula,
-    university,
-    career,
-    semester,
-    role,
-    area: "DEV"
-  };
-}
-
-// ================= SEGUIMIENTO DE ACTIVIDAD =================
-let _trackingReady = false;
-
-function setupActivityTracking() {
-  if (_trackingReady) return;
-  _trackingReady = true;
-
-  // Contar cambios de pestaña
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) {
-      exam.blurStartTime = Date.now();
-      exam.tabChanges++;
-    } else {
-      if (exam.blurStartTime) {
-        exam.totalBlurTime += Date.now() - exam.blurStartTime;
-        exam.blurStartTime = null;
-      }
-    }
-  });
-
-  // Prevenir copiar
-  document.addEventListener("copy", (e) => {
-    if (exam.startedAt) {
-      e.preventDefault();
-      exam.copyCount++;
-      return false;
-    }
-  });
-
-  // Prevenir pegar
-  document.addEventListener("paste", (e) => {
-    if (exam.startedAt) {
-      e.preventDefault();
-      exam.pasteCount++;
-      return false;
-    }
-  });
-
-  // Bloquear refresh (F5 / Ctrl+R) + Prevenir screenshot
-  document.addEventListener("keydown", (e) => {
-    if (!exam.startedAt) return;
-
-    const k = (e.key || "").toLowerCase();
-    if (e.key === "F5" || (e.ctrlKey && k === "r")) {
-      e.preventDefault();
-      return false;
-    }
-
-    if (e.key === "PrintScreen") {
-      e.preventDefault();
-      exam.screenshotAttempts++;
-      return false;
-    }
-  });
-}
-
-// ================= BLOQUEAR SALIDA / REFRESH =================
-let _beforeUnloadHandler = null;
-
-function enableLeaveGuard() {
-  if (_beforeUnloadHandler) return;
-
-  _beforeUnloadHandler = function (e) {
-    if (!exam.startedAt) return;
-    e.preventDefault();
-    e.returnValue = ""; // necesario para que el navegador muestre el aviso
-    return "";
+  // =============================
+  // State
+  // =============================
+  const state = {
+    positions: [],
+    evalByPosition: new Map(), // position_id -> normalized eval
+    activePositionId: "",
+    questions: [],
+    answers: [],
+    durationSeconds: 10 * 60,
+    remaining: 10 * 60,
+    timerHandle: null,
+    examStarted: false,
+    currentIndex: 0,
   };
 
-  window.addEventListener("beforeunload", _beforeUnloadHandler);
-}
-
-function disableLeaveGuard() {
-  if (!_beforeUnloadHandler) return;
-  window.removeEventListener("beforeunload", _beforeUnloadHandler);
-  _beforeUnloadHandler = null;
-}
-
-// ================= EXAM FLOW =================
-function renderQuestion() {
-  const q = exam.questions[exam.idx];
-  $("qText").textContent = `${exam.idx + 1}. ${q.prompt}`;
-  $("qAnswer").value = exam.answers[exam.idx] || "";
-  $("qAnswer").focus();
-}
-
-function startTimer() {
-  $("timer").textContent = formatMMSS(TOTAL_SEC);
-
-  exam.timerInt = setInterval(() => {
-    const now = Date.now();
-    const left = Math.max(0, Math.floor((exam.endsAt - now) / 1000));
-    $("timer").textContent = formatMMSS(left);
-
-    if (left <= 0) {
-      clearInterval(exam.timerInt);
-      exam.timerInt = null;
-      exam.timedOut = true;
-      exam.answers[exam.idx] = $("qAnswer").value.trim();
-      submitExam();
-    }
-  }, 1000);
-}
-
-function showExamUI() {
-  // Ocultar formulario, mostrar solo preguntas
-  document.querySelector(".card:first-of-type").style.display = "none";
-  $("examCard").classList.remove("hidden");
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-async function submitExam() {
-  $("btnNext").disabled = true;
-  showExamError("");
-
-  // Verificar que todas las preguntas tengan respuesta
-  for (let i = 0; i < exam.answers.length; i++) {
-    if (!exam.answers[i] || exam.answers[i].trim() === "") {
-      showExamError("Debes responder todas las preguntas antes de enviar.");
-      exam.idx = i;
-      renderQuestion();
-      $("btnNext").disabled = false;
-      return;
-    }
+  // =============================
+  // Utils
+  // =============================
+  function setMsg(el, msg) {
+    if (!el) return;
+    el.textContent = msg || "";
+    el.style.display = msg ? "block" : "none";
   }
 
-  // Calcular tiempo real
-  const actualDuration = Math.floor((Date.now() - exam.startedAt) / 1000);
+  function show(el) {
+    if (!el) return;
+    el.classList.remove("is-hidden");
+    el.classList.remove("hidden");
+  }
 
-  const payload = {
-    token: APP_TOKEN,
-    candidate: exam.candidate,
-    meta: {
-      area: "DEV",
-      startedAt: new Date(exam.startedAt).toISOString(),
-      finishedAt: new Date().toISOString(),
-      actualDurationSeconds: actualDuration,
-      timedOut: !!exam.timedOut,
-      tabChanges: exam.tabChanges,
-      pasteCount: exam.pasteCount,
-      copyCount: exam.copyCount,
-      screenshotAttempts: exam.screenshotAttempts,
-      totalBlurTime: exam.totalBlurTime,
-      userAgent: navigator.userAgent || ""
-    },
-    questions: exam.questions.map((q, i) => ({
-      id: q.id,
-      prompt: q.prompt,
-      moduleId: q.moduleId,
-      moduleName: q.moduleName,
-      answer: exam.answers[i] || ""
-    })),
-    cv: exam.cv
-  };
+  function hide(el) {
+    if (!el) return;
+    el.classList.add("is-hidden");
+    el.classList.add("hidden");
+  }
 
-  try {
-    // ENVÍO CON CORS SIMPLIFICADO
-    await fetch(APPS_SCRIPT_URL, {
+  function headers() {
+    const h = { Accept: "application/json" };
+    if (PUBLIC_KEY) h["X-API-Key"] = PUBLIC_KEY; // ✅ clave correcta
+    return h;
+  }
+
+  async function fetchJson(url) {
+    const res = await fetch(url, { method: "GET", headers: headers() });
+    const ct = (res.headers.get("content-type") || "").toLowerCase();
+
+    if (!ct.includes("application/json")) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(`Respuesta no JSON (${res.status}). ${txt.slice(0, 160)}`);
+    }
+
+    const data = await res.json();
+    if (!res.ok) {
+      const msg = data?.msg || data?.message || `HTTP ${res.status}`;
+      throw new Error(msg);
+    }
+    return data;
+  }
+
+  async function postJson(url, payload) {
+    const res = await fetch(url, {
       method: "POST",
-      mode: "no-cors", // Importante para evitar problemas de CORS
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
+      headers: { ...headers(), "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
 
-    console.log("Datos enviados exitosamente al servidor");
+    const ct = (res.headers.get("content-type") || "").toLowerCase();
+    let data = null;
 
-    // Limpiar todo y mostrar éxito
-    clearLock();
-    if (exam.timerInt) {
-      clearInterval(exam.timerInt);
-      exam.timerInt = null;
+    if (ct.includes("application/json")) {
+      data = await res.json().catch(() => null);
+    } else {
+      const txt = await res.text().catch(() => "");
+      data = { ok: false, msg: txt?.slice(0, 160) || `HTTP ${res.status}` };
     }
 
-    disableLeaveGuard();
-
-    // Mostrar mensaje de éxito
-    openModal("modalDone");
-  } catch (err) {
-    console.error("Error en envío:", err);
-
-    // Aún así mostrar éxito al usuario para mejor experiencia
-    clearLock();
-    if (exam.timerInt) {
-      clearInterval(exam.timerInt);
-      exam.timerInt = null;
+    if (!res.ok || !data || data.ok === false) {
+      const msg = data?.msg || data?.message || `HTTP ${res.status}`;
+      const err = new Error(msg);
+      err.code = data?.code || "";
+      throw err;
     }
 
-    disableLeaveGuard(); // ✅ faltaba esto
-
-    openModal("modalDone");
-  }
-}
-
-function resetToIndex() {
-  // Mostrar formulario nuevamente
-  document.querySelector(".card:first-of-type").style.display = "block";
-
-  // Limpiar formulario
-  $("firstName").value = "";
-  $("lastName").value = "";
-  $("cedula").value = "";
-  $("university").value = "";
-  $("career").value = "";
-  $("semester").value = "";
-  $("role").value = "";
-  $("cvFile").value = "";
-  $("acceptPolicy").checked = false;
-
-  // Resto del código
-  closeModal("modalDone");
-  $("examCard").classList.add("hidden");
-  $("btnNext").disabled = false;
-  $("qAnswer").value = "";
-  $("qText").textContent = "";
-  $("timer").textContent = "10:00";
-
-  disableLeaveGuard();
-
-  // Reset tracking flag (para que no se dupliquen listeners en pruebas/reinicio)
-  _trackingReady = false;
-
-  // Reset exam state
-  exam = {
-    startedAt: null,
-    endsAt: null,
-    timerInt: null,
-    questions: [],
-    idx: 0,
-    answers: [],
-    candidate: null,
-    cv: null,
-    timedOut: false,
-    tabChanges: 0,
-    pasteCount: 0,
-    copyCount: 0,
-    screenshotAttempts: 0,
-    blurStartTime: null,
-    totalBlurTime: 0
-  };
-
-  showFormError("");
-  showExamError("");
-  showUIMessage("");
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-async function beginExam() {
-  const lock = hasLock();
-  if (lock && lock.active) {
-    showFormError("Ya hay una evaluación en progreso.");
-    return;
+    return data;
   }
 
-  const validation = validateForm();
-  if (typeof validation === "string") {
-    showFormError(validation);
-    return;
+  function fileToBase64NoPrefix(file) {
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => {
+        const res = String(fr.result || "");
+        const parts = res.split("base64,");
+        resolve(parts.length > 1 ? parts[1] : "");
+      };
+      fr.onerror = reject;
+      fr.readAsDataURL(file);
+    });
   }
 
-  const candidate = validation;
-  const file = $("cvFile").files[0];
+  function normalizeEvalResponse(data) {
+    if (data?.ok === true) {
+      return {
+        ok: true,
+        position: data.position,
+        qb: data.qb,
+        questions: Array.isArray(data.questions) ? data.questions : [],
+        duration_minutes: 10,
+        title: "Evaluación de ingreso",
+        raw: data,
+      };
+    }
+    if (data?.eval) {
+      return {
+        ok: true,
+        position: data.position,
+        qb: data.qb,
+        questions: Array.isArray(data.eval.questions) ? data.eval.questions : [],
+        duration_minutes: Number(data.eval.duration_minutes || 10),
+        title: String(data.eval.title || "Evaluación de ingreso"),
+        raw: data,
+      };
+    }
+    return { ok: false, questions: [], raw: data };
+  }
 
-  try {
-    const base64 = await fileToBase64(file);
+  function formatTime(sec) {
+    const s = Math.max(0, sec | 0);
+    const mm = String(Math.floor(s / 60)).padStart(2, "0");
+    const ss = String(s % 60).padStart(2, "0");
+    return `${mm}:${ss}`;
+  }
 
-    // Inicializar seguimiento (solo una vez)
-    setupActivityTracking();
+  // Si el HTML no trae qText/qAnswer, los creamos dentro de questionHost
+  function ensureQuestionUI() {
+    if (qTextEl && qAnswerEl) return;
+    if (!questionHost) return;
 
-    // Obtener preguntas
+    questionHost.innerHTML = `
+      <div class="question">
+        <div id="qText" class="question__text"></div>
+        <textarea id="qAnswer" class="input textarea" rows="6"></textarea>
+      </div>
+    `.trim();
+
+    qTextEl = questionHost.querySelector("#qText");
+    qAnswerEl = questionHost.querySelector("#qAnswer");
+  }
+
+  // =============================
+  // Step control
+  // =============================
+  function goToExamStep() {
+    hide(form);
+    show(examCard);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // =============================
+  // CV picker
+  // =============================
+  function updateCvPickerLabel() {
+    if (!cvPicker) return;
+    const f = cvFile?.files?.[0];
+    const label = f ? f.name : "Haz clic para adjuntar tu PDF";
+    // cvPicker es BUTTON
+    cvPicker.textContent = label;
+  }
+
+  // =============================
+  // Validation
+  // =============================
+  function isFormOk() {
+    if (!firstName?.value?.trim()) return false;
+    if (!lastName?.value?.trim()) return false;
+    if (!cedula?.value?.trim()) return false;
+
+    // ✅ FIX CLAVE: NO es "role.value", es roleSelect.value
+    if (!roleSelect?.value) return false;
+
+    if (!email?.value?.trim()) return false;
+    if (!phone?.value?.trim()) return false;
+    if (!github?.value?.trim()) return false;
+
+    if (!cvFile || cvFile.files.length === 0) return false;
+
+    if (!university?.value?.trim()) return false;
+    if (!acceptPolicy?.checked) return false;
+
+    return true;
+  }
+
+  function refreshStartButton() {
+    if (!btnStart) return;
+    show(btnStart); // visible siempre
+    btnStart.disabled = !isFormOk();
+  }
+
+  // =============================
+  // Data load
+  // =============================
+  async function loadPositions() {
+    setMsg(uiMsg, "Cargando cargos...");
     try {
-      const url = `${APPS_SCRIPT_URL}?token=${APP_TOKEN}&area=DEV`;
-      const response = await fetch(url);
-      const result = await response.json();
+      const data = await fetchJson(ENDPOINT_POSITIONS);
 
-      if (!result.ok || !result.questions) {
-        showFormError("Error al cargar preguntas.");
-        return;
+      // ✅ robusto: soporta {positions} o array directo
+      const positions = Array.isArray(data)
+        ? data
+        : data.positions || data.items || data.data || [];
+
+      state.positions = positions;
+
+      roleSelect.innerHTML = `<option value="" disabled selected>Selecciona un cargo</option>`;
+
+      for (const p of positions) {
+        const id = String(p.position_id || p.id || "").trim();
+        const name = String(p.position_name || p.name || id);
+        if (!id) continue;
+
+        const opt = document.createElement("option");
+        opt.value = id;
+        opt.textContent = name;
+        roleSelect.appendChild(opt);
       }
 
-      exam.questions = result.questions;
-      exam.answers = new Array(exam.questions.length).fill("");
-      exam.idx = 0;
+      setMsg(uiMsg, "");
+      setMsg(formError, "");
+    } catch (err) {
+      setMsg(uiMsg, "");
+      setMsg(formError, `No se pudieron cargar cargos: ${err.message}`);
+    } finally {
+      refreshStartButton();
+    }
+  }
 
-      exam.candidate = candidate;
-      exam.cv = {
-        name: file.name,
-        mime: file.type || "application/octet-stream",
-        base64
+  async function preloadEvalForPosition(positionId) {
+    if (!positionId) return;
+    if (state.evalByPosition.has(positionId)) return;
+
+    setMsg(uiMsg, "Cargando evaluación...");
+    try {
+      const url = `${ENDPOINT_EVAL}?position_id=${encodeURIComponent(positionId)}`;
+      const data = await fetchJson(url);
+      const normalized = normalizeEvalResponse(data);
+
+      state.evalByPosition.set(positionId, normalized);
+
+      if (!normalized.ok) {
+        setMsg(formError, "No se pudo cargar la evaluación para ese cargo.");
+      } else if (!normalized.questions?.length) {
+        setMsg(formError, "La evaluación existe, pero no tiene preguntas.");
+      } else {
+        setMsg(formError, "");
+      }
+    } catch (err) {
+      setMsg(formError, "No se pudo cargar la evaluación para ese cargo.");
+    } finally {
+      setMsg(uiMsg, "");
+      refreshStartButton();
+    }
+  }
+
+  // =============================
+  // Exam
+  // =============================
+  function stopTimer() {
+    if (state.timerHandle) clearInterval(state.timerHandle);
+    state.timerHandle = null;
+  }
+
+  function startTimer() {
+    stopTimer();
+    if (timerEl) timerEl.textContent = formatTime(state.remaining);
+
+    state.timerHandle = setInterval(() => {
+      state.remaining -= 1;
+      if (timerEl) timerEl.textContent = formatTime(state.remaining);
+      if (state.remaining <= 0) {
+        stopTimer();
+        finishExam().catch(() => {});
+      }
+    }, 1000);
+  }
+
+  function saveCurrentAnswer() {
+    if (!qAnswerEl) return;
+    state.answers[state.currentIndex] = (qAnswerEl.value || "").trim();
+  }
+
+  function renderQuestion() {
+    ensureQuestionUI();
+    const q = state.questions[state.currentIndex];
+    if (!q) return;
+
+    const moduleName = q.moduleName || q.module || "";
+    const prompt = q.prompt || q.text || q.question || "";
+
+    if (qTextEl) {
+      qTextEl.textContent = moduleName
+        ? `${state.currentIndex + 1}. ${moduleName}: ${prompt}`
+        : `${state.currentIndex + 1}. ${prompt}`;
+    }
+
+    if (qAnswerEl) {
+      qAnswerEl.value = state.answers[state.currentIndex] || "";
+      qAnswerEl.placeholder = "Escribe tu respuesta aquí...";
+      qAnswerEl.focus();
+    }
+
+    const last = state.currentIndex === state.questions.length - 1;
+
+    if (btnPrev) btnPrev.disabled = state.currentIndex === 0;
+
+    if (btnNext) btnNext.style.display = last ? "none" : "inline-flex";
+    if (btnSubmit) btnSubmit.style.display = last ? "inline-flex" : "none";
+
+    setMsg(examError, "");
+  }
+
+  async function finishExam() {
+    saveCurrentAnswer();
+
+    const empty = state.answers.findIndex((a) => !a || !a.trim());
+    if (empty !== -1) {
+      state.currentIndex = empty;
+      renderQuestion();
+      setMsg(examError, `Falta responder la pregunta ${empty + 1}.`);
+      return;
+    }
+
+    const file = cvFile?.files?.[0];
+    if (!file) {
+      setMsg(examError, "Falta adjuntar el CV.");
+      return;
+    }
+    if ((file.type || "").toLowerCase() !== "application/pdf") {
+      setMsg(examError, "El CV debe ser PDF.");
+      return;
+    }
+
+    const originalSubmitText = btnSubmit?.textContent || "Enviar evaluación";
+    if (btnSubmit) {
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = "Enviando...";
+    }
+
+    try {
+      const cvB64 = await fileToBase64NoPrefix(file);
+      const pid = roleSelect.value.trim();
+
+      const payload = {
+        candidate: {
+          positionId: pid,
+          roleId: pid,
+          role: pid,
+
+          first_name: firstName.value.trim(),
+          last_name: lastName.value.trim(),
+          cedula: cedula.value.trim(),
+
+          email: email.value.trim(),
+          phone: phone.value.trim(),
+          github: github.value.trim(),
+          linkedin: linkedin ? linkedin.value.trim() : "",
+
+          university: university.value.trim(),
+          career: career ? career.value.trim() : "",
+          semester: semester ? semester.value.trim() : "",
+        },
+        meta: {
+          user_agent: navigator.userAgent,
+          lang: navigator.language,
+        },
+        questions: state.questions.map((q, i) => ({
+          id: q.id || q.qid || `Q${i + 1}`,
+          moduleId: q.moduleId || q.module || "",
+          moduleName: q.moduleName || "",
+          prompt: q.prompt || q.text || q.question || "",
+          answer: (state.answers[i] || "").trim(),
+        })),
+        cv: {
+          name: file.name || "cv.pdf",
+          mime: file.type || "application/pdf",
+          base64: cvB64,
+        },
       };
 
-      exam.startedAt = Date.now();
-      exam.endsAt = exam.startedAt + TOTAL_SEC * 1000;
+      await postJson(ENDPOINT_SUBMIT, payload);
 
-      enableLeaveGuard();
-
-      setLock({
-        active: true,
-        startedAt: exam.startedAt,
-        endsAt: exam.endsAt
-      });
-
-      closeModal("modalInfo");
-      showExamUI();
-      renderQuestion();
-      startTimer();
+      openModalDone("Evaluación enviada");
     } catch (err) {
-      console.error("Error al obtener preguntas:", err);
-      showFormError("Error de conexión.");
+      setMsg(examError, err?.message || "No se pudo enviar la evaluación.");
+    } finally {
+      if (btnSubmit) {
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = originalSubmitText;
+      }
     }
-  } catch (fileError) {
-    console.error("Error procesando archivo:", fileError);
-    showFormError("Error al procesar la hoja de vida.");
   }
-}
 
-// ================= EVENTS =================
-document.addEventListener("DOMContentLoaded", () => {
-  // Validar cédula - solo números
-  $("cedula").addEventListener("input", function () {
-    this.value = this.value.replace(/\D/g, "");
+  // =============================
+  // Modals
+  // =============================
+  function openModalInfo() {
+    if (!modalInfo) return;
+    modalInfo.classList.remove("hidden", "is-hidden");
+    modalInfo.classList.add("open");
+  }
+
+  function closeModalInfo() {
+    if (!modalInfo) return;
+    modalInfo.classList.remove("open");
+    modalInfo.classList.add("hidden");
+  }
+
+  function openModalDone(title) {
+    if (!modalDone) return;
+    const t = $("modalDoneTitle");
+    if (t) t.textContent = title || "Listo";
+    modalDone.classList.remove("hidden", "is-hidden");
+    modalDone.classList.add("open");
+  }
+
+  function closeModalDone() {
+    if (!modalDone) return;
+    modalDone.classList.remove("open");
+    modalDone.classList.add("hidden");
+  }
+
+  // =============================
+  // Events
+  // =============================
+  const revalidate = () => refreshStartButton();
+
+  [firstName, lastName, cedula, university, career, semester].forEach((el) =>
+    el?.addEventListener("input", revalidate)
+  );
+
+  [email, phone, github, linkedin].forEach((el) =>
+    el?.addEventListener("input", revalidate)
+  );
+
+  acceptPolicy?.addEventListener("change", revalidate);
+
+  roleSelect?.addEventListener("change", async () => {
+    const pid = roleSelect.value.trim();
+    state.activePositionId = pid;
+    await preloadEvalForPosition(pid);
+    refreshStartButton();
   });
 
-  // Validar archivo
-  $("cvFile").addEventListener("change", function () {
-    const file = this.files[0];
-    if (file && file.size > MAX_CV_BYTES) {
-      showFormError("Archivo demasiado grande (máx. 8 MB)");
-      this.value = "";
-    }
-  });
-
-  // start click
-  $("btnStart").addEventListener("click", function (e) {
-    e.preventDefault();
-    showFormError("");
-
-    const validation = validateForm();
-    if (typeof validation === "string") {
-      showFormError(validation);
-      return;
-    }
-
-    openModal("modalInfo");
-  });
-
-  // modal start buttons
-  $("modalInfoClose").addEventListener("click", () => closeModal("modalInfo"));
-  $("btnCancelStart").addEventListener("click", () => closeModal("modalInfo"));
-  $("btnAcceptStart").addEventListener("click", () => beginExam());
-
-  // next question
-  $("btnNext").addEventListener("click", function () {
-    const currentAnswer = $("qAnswer").value.trim();
-
-    if (!currentAnswer || currentAnswer === "") {
-      showExamError("Debes escribir una respuesta antes de continuar.");
-      $("qAnswer").focus();
-      return;
-    }
-
-    showExamError("");
-    exam.answers[exam.idx] = currentAnswer;
-
-    if (exam.idx < exam.questions.length - 1) {
-      exam.idx++;
-      renderQuestion();
-    } else {
-      submitExam();
-    }
-  });
-
-  // modal done
-  $("modalDoneClose").addEventListener("click", resetToIndex);
-  $("btnDoneOk").addEventListener("click", resetToIndex);
-
-  // Permitir Ctrl+Enter para enviar
-  $("qAnswer").addEventListener("keydown", function (e) {
-    if (e.key === "Enter" && e.ctrlKey) {
+  // CV picker
+  cvPicker?.addEventListener("click", () => cvFile?.click());
+  cvPicker?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      $("btnNext").click();
+      cvFile?.click();
     }
   });
 
-  // Si hay lock, mostrar mensaje
-  const lock = hasLock();
-  if (lock && lock.active) {
-    const now = Date.now();
-    if (now < (lock.endsAt || 0)) {
-      showFormError("Ya hay una sesión iniciada. Finaliza la evaluación para reiniciar.");
+  cvFile?.addEventListener("change", () => {
+    updateCvPickerLabel();
+    refreshStartButton();
+  });
+
+  // Start -> modal
+  btnStart?.addEventListener("click", (e) => {
+    e.preventDefault();
+    openModalInfo();
+  });
+
+  btnContinue?.addEventListener("click", () => {
+    closeModalInfo();
+
+    const pid = roleSelect.value.trim();
+    const evalData = state.evalByPosition.get(pid);
+
+    if (!evalData?.ok || !evalData.questions?.length) {
+      setMsg(formError, "No se pudo cargar la evaluación para ese cargo.");
+      refreshStartButton();
+      return;
     }
-  }
-});
+
+    state.examStarted = true;
+    state.activePositionId = pid;
+    state.questions = evalData.questions;
+    state.answers = new Array(state.questions.length).fill("");
+
+    state.durationSeconds = Math.max(1, (evalData.duration_minutes || 10) * 60);
+    state.remaining = state.durationSeconds;
+    state.currentIndex = 0;
+
+    goToExamStep();
+    renderQuestion();
+    startTimer();
+  });
+
+  modalInfo?.querySelectorAll('[data-close="1"]').forEach((el) => {
+    el.addEventListener("click", closeModalInfo);
+  });
+
+  // Exam nav
+  btnPrev?.addEventListener("click", () => {
+    if (!state.examStarted) return;
+    saveCurrentAnswer();
+    if (state.currentIndex > 0) {
+      state.currentIndex -= 1;
+      renderQuestion();
+    }
+  });
+
+  btnNext?.addEventListener("click", (e) => {
+    e.preventDefault();
+    if (!state.examStarted) return;
+    saveCurrentAnswer();
+    if (state.currentIndex < state.questions.length - 1) {
+      state.currentIndex += 1;
+      renderQuestion();
+    }
+  });
+
+  btnSubmit?.addEventListener("click", async (e) => {
+    e.preventDefault();
+    if (!state.examStarted) return;
+    await finishExam();
+  });
+
+  qAnswerEl?.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      // si existe btnNext lo usa, si no, submit
+      if (btnNext && btnNext.style.display !== "none") btnNext.click();
+      else btnSubmit?.click();
+    }
+  });
+
+  modalDoneClose?.addEventListener("click", closeModalDone);
+  btnDoneOk?.addEventListener("click", closeModalDone);
+
+  // =============================
+  // Init
+  // =============================
+  document.addEventListener("DOMContentLoaded", async () => {
+    hide(examCard);
+    show(form);
+
+    show(btnStart);
+    btnStart.disabled = true;
+
+    updateCvPickerLabel();
+
+    await loadPositions();
+    refreshStartButton();
+  });
+})();
