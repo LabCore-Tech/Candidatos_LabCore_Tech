@@ -3,219 +3,240 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>LabCore | Evaluación de ingreso</title>
-
+  <title>LabCore Tech | Evaluación</title>
   <link rel="stylesheet" href="src/css/styles.css" />
-  <link rel="stylesheet" href="src/css/fant.css" />
+
+	<!-- Google tag (gtag.js) -->
+	<script async src="https://www.googletagmanager.com/gtag/js?id=G-NE36ZXZC77"></script>
+	<script>
+	  window.dataLayer = window.dataLayer || [];
+	  function gtag(){dataLayer.push(arguments);}
+	  gtag('js', new Date());
+	
+	  gtag('config', 'G-NE36ZXZC77');
+	</script>
 </head>
 
 <body>
   <main class="wrap">
 
-    <!-- Header -->
-      <header class="topbar">
-        <div class="topbar-inner">
-          <div class="brandline">
-            <div class="logo-badge">
-              <img src="src/img/LabCore.webp" alt="LabCore Logo" class="brand-logo">
-            </div>
+    <!-- TOPBAR PRO -->
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brandline">
+          <div class="logo-badge" aria-hidden="true">
+            <img src="src/img/LabCore.webp" alt="LabCore Logo" class="brand-logo">
+          </div>
 
-            <div class="brandcopy">
-              <img src="src/img/LabCoretxt.webp" alt="LabCore Tech" class="brand-text">
-              <div class="brand-subtitle">Proceso de Selección - LabCore Tech</div>
-            </div>
+          <div class="brandcopy">
+            <img src="src/img/LabCoretxt.webp" alt="LabCore Tech" class="brand-text">
+            <div class="brand-subtitle">Evaluación de ingreso</div>
           </div>
         </div>
-      </header>
+      </div>
+    </header>
 
-    <!-- Step 1: Form -->
-    <section id="candidateForm" class="card">
-      <h1 class="title">Datos del candidato</h1>
-      <p class="subtitle">Los campos con <span class="req">*</span> son obligatorios.</p>
+    <!-- CARD FORM -->
+    <section class="card">
+      <div class="card-head">
+        <h1>Datos del postulante</h1>
+        <p class="muted">Completa los campos y adjunta la hoja de vida antes de iniciar.</p>
+      </div>
 
-      <form class="grid" autocomplete="off">
-
+      <form id="candidateForm" class="formgrid" autocomplete="on" novalidate>
         <div class="field">
-          <label for="firstName">Nombre <span class="req">*</span></label>
-          <input id="firstName" class="input" type="text" placeholder="Escribe tu nombre" />
+          <label for="firstName">Nombre</label>
+          <input id="firstName" name="firstName" type="text" placeholder="Escribe tu nombre" required autocomplete="given-name" />
         </div>
 
         <div class="field">
-          <label for="lastName">Apellido <span class="req">*</span></label>
-          <input id="lastName" class="input" type="text" placeholder="Escribe tu apellido" />
+          <label for="lastName">Apellido</label>
+          <input id="lastName" name="lastName" type="text" placeholder="Escribe tu apellido" required autocomplete="family-name" />
         </div>
 
         <div class="field">
-          <label for="cedula">Cédula <span class="req">*</span></label>
-          <input id="cedula" class="input" type="text" inputmode="numeric" placeholder="Solo números" />
+          <label for="cedula">Cédula</label>
+          <input id="cedula" name="cedula" type="text" inputmode="numeric" placeholder="Solo números" required autocomplete="off" />
         </div>
 
         <div class="field">
-          <label for="role">Cargo a concursar <span class="req">*</span></label>
-          <select id="role" class="input">
-            <option value="" selected>Cargando...</option>
+          <label for="university">Universidad</label>
+          <input id="university" name="university" type="text" placeholder="Escribe tu universidad" required autocomplete="organization" />
+        </div>
+
+        <!--<div class="field">
+          <label for="career">Carrera</label>
+          <select id="career" name="career" required>
+            <option value="" selected disabled>Selecciona...</option>
+            <option>Ingeniería de Sistemas</option>
+            <option>Tecnología en Sistemas</option>
+            <option>Desarrollo de Software</option>
+            <option>Ingeniería de Software</option>
+            <option value="OTRA">Otra</option> 
           </select>
         </div>
 
         <div class="field">
-          <label for="email">Correo <span class="req">*</span></label>
-          <div class="inputWrap">
-            <input id="email" class="input" type="email" placeholder="tucorreo@dominio.com" />
-            <span class="inputIcon" aria-hidden="true"></span>
-          </div>
-        </div>
+          <label for="semester">Semestre</label>
+          <select id="semester" name="semester" required>
+            <option value="" selected disabled>Selecciona...</option>
+            <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+            <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
+            <option value="OTRO">Otro</option>
+          </select>
+        </div>-->
+		
+		<div class="field">
+		  <label for="career">Carrera</label>
 
+		  <input id="career" name="career" list="careerList"
+				 placeholder="Selecciona... o escribe"
+				 autocomplete="off" required />
+
+		  <datalist id="careerList">
+			<option value="Ingeniería de Sistemas"></option>
+			<option value="Tecnología en Sistemas"></option>
+			<option value="Desarrollo de Software"></option>
+			<option value="Ingeniería de Software"></option>
+			<option value="Otra"></option>
+		  </datalist>
+		</div>
+
+		<div class="field">
+		  <label for="semester">Semestre</label>
+
+		  <input id="semester" name="semester" list="semesterList"
+				 placeholder="Selecciona... o escribe"
+				 inputmode="numeric"
+				 autocomplete="off" required />
+
+		  <datalist id="semesterList">
+			<option value="1"></option><option value="2"></option><option value="3"></option><option value="4"></option><option value="5"></option>
+			<option value="6"></option><option value="7"></option><option value="8"></option><option value="9"></option><option value="10"></option>
+			<option value="Otro"></option>
+		  </datalist>
+		</div>
+
+        <!-- Cargo -->
         <div class="field">
-          <label for="phone">Celular <span class="req">*</span></label>
-          <input id="phone" class="input" type="text" inputmode="tel" placeholder="Ej: 3001234567" />
+          <label for="role">Cargo a concursar</label>
+          <select id="role" name="role" required>
+            <option value="" selected disabled>Selecciona...</option>
+            <option value="Auxiliar de desarrollo">Auxiliar de desarrollo</option>
+            <option value="Desarrollador">Desarrollador</option>
+          </select>
         </div>
 
-        <div class="field">
-          <label for="github">GitHub <span class="req">*</span></label>
-          <input id="github" class="input" type="url" placeholder="https://github.com/tuusuario" />
-        </div>
+        <!-- ÚLTIMA FILA: CV y checkbox en línea 
+		<!-- Hoja de vida (columna 2) -->
+		<div class="field cv-field">
+		  <label for="cvFile">Hoja de vida (PDF / DOC / DOCX)</label>
 
-        <div class="field">
-          <label for="cvFile">Hoja de vida <span class="req">*</span></label>
+		  <input id="cvFile" name="cvFile" type="file"
+				 accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+				 required />
 
-          <!-- input real -->
-          <input id="cvFile" type="file" accept="application/pdf" class="hidden" />
+		  <small class="hint cv-hint">Máximo recomendado: 8 MB</small>
+		</div>
 
-          <!-- picker visual -->
-          <div id="cvPicker" class="filePicker" tabindex="0" role="button" aria-label="Adjuntar hoja de vida PDF">
-            Haz clic para adjuntar tu PDF
-          </div>
-        </div>
+		<!-- Política (columna 3, debajo de Semestre) -->
+		<div class="field">
+		  <label>Política de tratamiento</label>
 
-        <div class="field">
-          <label for="linkedin">LinkedIn</label>
-          <input id="linkedin" class="input" type="url" placeholder="https://www.linkedin.com/in/tuperfil" />
-        </div>
+		  <label class="policy-check">
+			<input id="acceptPolicy" type="checkbox" />
+			<span>
+			  Acepto la
+			  <a href="politica-datos.html"
+				   onclick="window.open('politica-datos.html','politica','width=980,height=720,scrollbars=yes,resizable=yes'); return false;"
+				   style="color: var(--primary2); text-decoration:none;">
+				  Política de tratamiento de datos.
+			  </a>
 
-        <div class="field">
-          <label for="university">Universidad <span class="req">*</span></label>
-          <input id="university" class="input" type="text" placeholder="Escribe tu universidad" />
-        </div>
+			</span>
+		  </label>
+		</div>
 
-        <div class="field">
-          <label for="career">Carrera <span class="req">*</span></label>
-        
-          <input id="career" name="career" class="input"
-                 list="careerList"
-                 placeholder="Selecciona... o escribe"
-                 autocomplete="off" required />
-        
-          <datalist id="careerList">
-            <option value="Ingeniería de Sistemas"></option>
-            <option value="Tecnología en Sistemas"></option>
-            <option value="Desarrollo de Software"></option>
-            <option value="Ingeniería de Software"></option>
-          </datalist>
-        </div>
-        
-        <div class="field">
-          <label for="semester">Semestre <span class="req">*</span></label>
-        
-          <input id="semester" name="semester" class="input"
-                 list="semesterList"
-                 placeholder="Selecciona... o escribe"
-                 inputmode="numeric"
-                 autocomplete="off" required />
-        
-          <datalist id="semesterList">
-            <option value="1"></option><option value="2"></option><option value="3"></option><option value="4"></option><option value="5"></option>
-            <option value="6"></option><option value="7"></option><option value="8"></option><option value="9"></option><option value="10"></option>
-            <option value="Graduado"></option><option value="Suspendido"></option><option value="Terminado"></option>
-          </datalist>
-        </div>
-
-    
-        <div class="field field--full">
-          <label class="check">
-            <input id="acceptPolicy" type="checkbox" />
-            <span>
-              Acepto la
-              <a href="politica-datos.html"
-                onclick="window.open('politica-datos.html','politica','width=980,height=720,scrollbars=yes,resizable=yes'); return false;"
-                style="color: var(--primary2); text-decoration:none;">
-                Política de tratamiento de datos.
-              </a>
-            </span>
-          </label>
-        </div>
-
-        <!-- ✅ NUEVO: info de servicio (Render wake) -->
-        <div id="serviceInfo" class="alert alert--info hidden" role="status"></div>
-
-        <div id="formError" class="alert alert--danger hidden" role="alert"></div>
-
+        <!-- Botón centrado -->
         <div class="actions">
-          <button id="btnStart" class="btn primary" type="button" disabled>Iniciar prueba</button>
+          <button id="btnStart" type="button" class="btn primary">
+            Iniciar evaluación
+          </button>
+          <div id="formError" class="form-error"></div>
         </div>
+
+        <!-- Mensajes informativos -->
+        <div id="uiMsg" class="ui-msg hidden" role="status" aria-live="polite"></div>
       </form>
     </section>
 
-    <!-- Step 2: Exam -->
-    <section id="examCard" class="card is-hidden">
-      <div class="examTop">
-        <h2 class="title">Evaluación</h2>
+    <!-- CARD QUESTIONS -->
+    <section id="examCard" class="card hidden">
+      <div class="card-head card-head-split">
+        <div>
+          <h2>Preguntas</h2>
+          <p class="muted">Responde con claridad. No cierres la página durante la sesión.</p>
+        </div>
 
-        <div id="timerBox" class="timerBox hidden" aria-live="polite">
-          <div class="timer">
-            <div class="timer__label">Tiempo</div>
-            <div id="timer" class="timer__value">10:00</div>
-            <div id="timeHint" class="timeHint hidden" aria-live="polite"></div>
-          </div>
+        <div class="timerBox" aria-label="Tiempo restante">
+          <div class="timerLabel">Tiempo restante</div>
+          <div id="timer" class="timerValue">10:00</div>
         </div>
       </div>
 
-      <!-- ✅ Se mantiene para backend, pero NO visible al candidato -->
-      <div class="examMeta hidden" aria-hidden="true">Incidentes: <b id="incidents">0</b></div>
+      <div class="questionBox">
+        <div id="qText" class="qText">Cargando…</div>
+        <textarea id="qAnswer" class="answerBox" placeholder="Escribe tu respuesta..." rows="8"></textarea>
 
-      <div id="examError" class="alert alert--danger hidden" role="alert"></div>
-
-      <div id="questionHost" class="questionHost"></div>
-
-      <div class="examActions examActions--center">
-        <button id="btnPrev" class="btn btn--ghost hidden" type="button">‹</button>
-        <button id="btnNext" class="btn btn--ghost" type="button">›</button>
-        <button id="btnSubmit" class="btn primary hidden" type="button">Enviar evaluación</button>
+        <div class="actions">
+          <button id="btnNext" type="button" class="btn primary">Continuar</button>
+          <div id="examError" class="form-error"></div>
+        </div>
       </div>
     </section>
 
+    <!-- MODAL: info inicio -->
+    <div id="modalInfo" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop"></div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalInfoTitle">
+        <button class="modal-x" type="button" id="modalInfoClose" aria-label="Cerrar">×</button>
+        <h3 id="modalInfoTitle">Información antes de iniciar</h3>
+
+        <p class="modal-text">
+          Esta evaluación de ingreso tiene una duración máxima de <b>10 min</b>.
+          Se recomienda disponer de este tiempo completo para responder con calma y sin interrupciones.
+        </p>
+
+        <ul class="modal-list">
+          <li>Durante la sesión, evita recargar la página o cerrar la ventana.</li>
+          <li>Si la sesión se interrumpe, la evaluación no podrá iniciarse nuevamente desde este dispositivo.</li>
+        </ul>
+
+        <div class="modal-actions">
+          <button class="btn" type="button" id="btnCancelStart">Cancelar</button>
+          <button class="btn primary" type="button" id="btnAcceptStart">Acepto, continuar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: final -->
+    <div id="modalDone" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop"></div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalDoneTitle">
+        <button class="modal-x" type="button" id="modalDoneClose" aria-label="Cerrar">×</button>
+        <h3 id="modalDoneTitle">Evaluación finalizada</h3>
+        <p class="modal-text">
+          Tus respuestas serán remitidas satisfactoriamente al área encargada de LabCore Tech.
+        </p>
+        <div class="modal-actions">
+          <button class="btn primary" type="button" id="btnDoneOk">Continuar</button>
+        </div>
+      </div>
+    </div>
+
   </main>
 
-  <!-- Modal info -->
-  <div id="modalInfo" class="modal hidden" aria-hidden="true">
-    <div class="modal__backdrop" data-close="1"></div>
-    <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="miTitle">
-      <h3 id="miTitle">Antes de iniciar</h3>
-      <ul class="modal__list">
-        <li>La evaluación tiene una duración aproximada de <b>10 minutos</b>.</li>
-        <li>Se recomienda disponer de este tiempo sin interrupciones para resolverla.</li>
-        <li>Al continuar, la prueba iniciará de forma inmediata.</li>
-      </ul>
-      <div class="modal__actions">
-        <button class="btn btn--ghost" type="button" data-close="1">Cancelar</button>
-        <button id="btnContinue" class="btn primary" type="button">Continuar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal result -->
-  <div id="modalResult" class="modal hidden" aria-hidden="true">
-    <div class="modal__backdrop" data-close="1"></div>
-    <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="mrTitle">
-      <h3 id="mrTitle">Resultado</h3>
-      <p id="mrMsg"></p>
-      <div class="modal__actions">
-        <button class="btn primary" type="button" data-close="1">Cerrar</button>
-      </div>
-    </div>
-  </div>
-
-  <script src="src/js/fant.js"></script>
-  <script src="src/js/app.js"></script>
+  <script defer src="src/js/app.js"></script>
 </body>
 
 </html>

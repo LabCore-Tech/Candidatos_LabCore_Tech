@@ -1,510 +1,429 @@
 :root{
-  --bg:#f6f3fb;
+  --bg1:#eef3ff;
+  --bg2:#f7f2ff;
   --card:#ffffff;
   --text:#0f172a;
   --muted:#64748b;
-  --line:#e2e8f0;
-  --req:#ef4444;
+  --line:#dbe6ff;
+  --primary:#4f46e5;
   --primary2:#6d28d9;
+  --danger:#ef4444;
+  --shadow: 0 18px 50px rgba(15,23,42,.12);
+  --radius: 28px;
 }
 
-*{box-sizing:border-box}
-html,body{height:100%}
-
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
 body{
   margin:0;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Helvetica Neue", sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
   color:var(--text);
   background:
-    radial-gradient(1200px 500px at 40% -10%, rgba(186,230,253,.35), transparent 60%),
-    radial-gradient(900px 500px at 90% 0%, rgba(216,180,254,.25), transparent 55%),
-    var(--bg);
+    radial-gradient(900px 450px at 10% 10%, var(--bg1), transparent 60%),
+    radial-gradient(900px 450px at 90% 10%, var(--bg2), transparent 60%),
+    #f8fbff;
 }
-
-.hidden,.is-hidden{display:none !important}
 
 .wrap{
-  width:min(1100px, 94vw);
-  margin:22px auto 44px;
+  width:min(1200px, 94vw);
+  margin: 22px auto 34px;
+  display:flex;
+  flex-direction:column;
+  gap:18px;
 }
 
-.card{
-  background:rgba(255,255,255,.88);
-  border:1px solid rgba(226,232,240,.9);
-  border-radius:24px;
-  box-shadow:0 18px 48px rgba(15, 23, 42, .12);
-  padding:24px; /* ✅ un poco menos = se ve bien al 100% */
+.topbar{
+  background: rgba(255,255,255,.85);
+  border:1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
 }
+
+.topbar-inner{ padding:18px 20px; }
 
 /* =========================
-   TOPBAR (LabCore)
+   HEADER (AJUSTADO)
    ========================= */
-.topbar{
-  width: min(1100px, 92vw);
-  margin: 22px auto 14px;
-}
-
-.topbar-inner{
-  background: rgba(255,255,255,.65);
-  border: 1px solid rgba(226,232,240,.75);
-  border-radius: 22px;
-  padding: 14px 18px;
-  box-shadow: 0 18px 48px rgba(15, 23, 42, .08);
-  display: flex;
-  justify-content: center;
-}
-
 .brandline{
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: nowrap;
-  text-align: left;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  position: relative;
 }
 
 .logo-badge{
-  width:56px;
-  height:56px;
-  border-radius:18px;
-  display:grid;
-  place-items:center;
-  background: rgba(255,255,255,.72);
-  border: 1px solid rgba(226,232,240,.9);
+  width:66px; height:66px;
+  border-radius: 18px;
+  background: #f3f6ff;
+  border:1px solid var(--line);
+  display:grid; place-items:center;
   overflow:hidden;
-  flex: 0 0 auto;
 }
 
 .brand-logo{
-  width:42px;
-  height:42px;
+  width:44px; height:44px;
   object-fit:contain;
-  display:block;
 }
 
+/* ✅ antes era column: ahora fila para que "Evaluación de ingreso" quede AL LADO del logo txt */
 .brandcopy{
   display:flex;
-  flex-direction:column;
-  gap:4px;
-  align-items:flex-start;
+  flex-direction:row;
+  align-items:center;   /* ✅ centra verticalmente logo txt y subtítulo */
+  gap:14px;
+  width: 100%;
 }
 
+/* ✅ logo txt centrado verticalmente */
 .brand-text{
-  height:28px;
+  height:80px !important;
   width:auto;
-  max-width:360px;
   object-fit:contain;
+  image-rendering:auto;
   display:block;
 }
 
+/* ✅ subtítulo al lado, centrado vertical y "ópticamente" como bloque */
 .brand-subtitle{
-  font-size:1.05rem;
-  font-weight:650;
-  color:#64748b;
-  line-height:1.15;
-}
-
-/* =========================
-   Titles
-   ========================= */
-.title{
-  margin:0;
-  font-size:3rem;
-  line-height:1.05;
-  letter-spacing:-.02em;
-}
-.subtitle{
-  margin:10px 0 18px;
-  color:#475569;
-  font-weight:600;
-}
-.req{color:var(--req)}
-
-/* =========================
-   Form layout
-   ========================= */
-.grid{
-  display:grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap:18px 16px;
-}
-
-.field{display:flex;flex-direction:column;gap:8px}
-.field--full{grid-column:1 / -1}
-.field label{font-weight:700;color:#0f172a}
-
-.inputWrap{position:relative}
-.inputIcon{
-  position:absolute;
-  right:12px;
-  top:50%;
-  transform:translateY(-50%);
-  width:18px;height:18px;
-  border-radius:4px;
-  background:linear-gradient(135deg, rgba(148,163,184,.35), rgba(226,232,240,.85));
-  border:1px solid rgba(148,163,184,.35);
-}
-
-.input{
-  width:100%;
-  height:52px;                 /* 🔒 altura fija */
-  padding:0 14px;              /* 🔒 ya no crece por padding vertical */
-  border-radius:16px;
-  border:1px solid rgba(203,213,225,.9);
-  background:rgba(255,255,255,.85);
-  outline:none;
-  font-size:1rem;
-  line-height:52px;            /* 🔒 centra texto vertical */
-  color:#0f172a;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
-  box-sizing:border-box;       /* 🔒 evita cambios raros */
-}
-
-/* 🔒 SELECT también fijo */
-select.input{
-  height:52px;
-  line-height:normal;          /* en select no uses line-height 52 */
-  padding:0 14px;
-}
-
-/* 🔒 evita que el filePicker “salte” si cambia el texto */
-.filePicker{
-  min-height:52px;
+  color:var(--muted);
+  line-height:1;
   display:flex;
   align-items:center;
+  justify-content:center;
+  margin:0;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+
+  margin-left: auto;     /* lo manda hacia la derecha dentro de brandcopy */
+  font-size: 16px;       /* un poco más grande (antes 14px) */
+  font-weight: 700;      /* negrilla suave */
+  color: #475569;        /* un poco más marcada que --muted pero sobria */
+  letter-spacing: .2px;
+
+}
+/* ========================= */
+
+.card{
+  background: rgba(255,255,255,.88);
+  border:1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+  overflow:hidden;
 }
 
-.input:focus{
-  border-color:rgba(196,181,253,.95);
-  box-shadow:0 0 0 4px rgba(196,181,253,.25);
+.card-head{
+  padding:18px 20px 12px;
 }
-
-.textarea{min-height:180px; resize:vertical}
-
-.help{
-  font-size:.9rem;
-  color:#64748b;
-  font-weight:600;
+.card-head h1, .card-head h2{
+  margin:0 0 6px;
+  font-size:28px;
 }
+.muted{ margin:0; color:var(--muted); }
 
-.check{
+.card-head-split{
   display:flex;
-  gap:10px;
   align-items:flex-start;
-  font-weight:600;
-  color:#334155;
+  justify-content:space-between;
+  gap:16px;
 }
-.check input{transform:translateY(3px)}
+
+.timerBox{
+  min-width: 190px;
+  border:1px solid rgba(239,68,68,.35);
+  background: rgba(239,68,68,.06);
+  border-radius: 18px;
+  padding:10px 12px;
+  text-align:right;
+}
+.timerLabel{
+  color:#991b1b;
+  font-size:12px;
+  letter-spacing:.2px;
+}
+.timerValue{
+  font-size:20px;
+  font-weight:800;
+  color:var(--danger);
+}
+
+.formgrid{
+  padding: 0 20px 12px;
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap:14px 14px;
+}
+
+.field{ display:flex; flex-direction:column; gap:8px; }
+.field label{ font-size:14px; color:#334155; }
+
+.field input,
+.field select{
+  height:46px;
+  border-radius:16px;
+  border:1px solid var(--line);
+  background:#f9fbff;
+  padding: 0 14px;
+  outline:none;
+  font-size:15px;
+}
+.field input:focus,
+.field select:focus{
+  border-color: rgba(79,70,229,.55);
+  box-shadow: 0 0 0 4px rgba(79,70,229,.10);
+  background:#fff;
+}
+.hint{
+  color:var(--muted);
+  font-size:12px;
+  margin-top:-2px;
+}
+
+.field-wide{
+  grid-column: span 1;
+}
+.field-inline{ margin-top:8px; }
+.hidden{ display:none !important; }
+
+/* =========================
+   CV + POLÍTICA (lo que ya tenías)
+   ========================= */
+
+/* Campo de hoja de vida SIN BOX */
+.cv-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  grid-column: span 1;
+}
+
+.cv-field input[type="file"] {
+  height: 46px;
+  padding: 0 14px;
+  border-radius: 16px;
+  background: transparent;
+  font-size: 15px;
+  color: #334155;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border:1px solid transparent; /* cuadro transparente */
+  margin-top: 8px !important;   /* bajar SOLO el input */
+}
+
+/* Bajar SOLO el checkbox de política */
+.policy-check{
+  margin-top: 8px !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color:#334155;
+  font-size:14px;
+  margin-left: 0;
+  white-space: nowrap;
+}
+.policy-check input{
+  margin:0;
+  width:16px;
+  height:16px;
+}
+.policy-check a{ color: var(--primary2); text-decoration:none; }
+.policy-check a:hover{ text-decoration:underline; }
+
+/* Subir “Máximo recomendado…” */
+.cv-hint{
+  margin-top: -8px !important;
+}
+/* ========================= */
 
 .actions{
-  grid-column:1 / -1;
+  grid-column: 1 / -1;
   display:flex;
   justify-content:center;
-  margin-top:6px;
+  gap:10px;
+  padding-top: 2px;
+  margin-top: -10px;
 }
 
 .btn{
-  border:none;
+  height:46px;
+  padding:0 24px;
+  border-radius: 18px;
+  border:1px solid var(--line);
+  background:#fff;
   cursor:pointer;
-  border-radius:18px;
-  padding:14px 18px;
-  font-weight:800;
-  font-size:1rem;
-  transition:.15s transform, .15s filter;
+  font-size:16px;
 }
-.btn:active{transform:scale(.99)}
-.btn:disabled{opacity:.5; cursor:not-allowed}
-
-.btn--ghost{
-  background:rgba(241,245,249,.9);
-  border:1px solid rgba(203,213,225,.9);
-  color:#111827;
-  min-width:160px;
-}
-
 .btn.primary{
-  color:#111827;
-  background: linear-gradient(
-    135deg,
-    #d7d7d7 0%,
-    #f3f3f3 22%,
-    #d6b46b 52%,
-    #c7c7c7 78%,
-    #9a9a9a 100%
-  );
-  border: 1px solid rgba(180, 160, 110, .55);
-  box-shadow: 0 16px 30px rgba(15, 23, 42, .12);
-  min-width: 260px;
+  border:none;
+  background: linear-gradient(135deg, var(--primary), var(--primary2));
+  color:#fff;
+  box-shadow: 0 10px 24px rgba(79,70,229,.22);
+}
+.btn:disabled{
+  opacity:.55;
+  cursor:not-allowed;
 }
 
-.filePicker{
-  padding:14px 14px;
-  border-radius:16px;
-  border:1px dashed rgba(148,163,184,.85);
-  background:rgba(255,255,255,.75);
-  font-weight:700;
-  color:#94a3b8;
-  cursor:pointer;
-}
-.filePicker:focus{
-  outline:none;
-  border-color:rgba(196,181,253,.95);
-  box-shadow:0 0 0 4px rgba(196,181,253,.25);
+/* Mensaje de error al lado del botón */
+.form-error {
+  color: #dc2626;
+  font-size: 14px;
+  margin-left: 10px;
+  padding: 8px 0;
 }
 
-/* Alerts */
-.alert{
-  border:1px solid;
-  border-radius:16px;
-  padding:12px 14px;
-  font-weight:700;
-  line-height:1.25;
-}
-.alert--danger{
-  border-color:#fecaca;
-  background:#fef2f2;
-  color:#991b1b;
-}
-.alert--info{
-  border-color:rgba(148,163,184,.55);
-  background:rgba(241,245,249,.75);
+.ui-msg{
+  grid-column: 1 / -1;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border:1px solid rgba(148,163,184,.45);
+  background: rgba(248,250,252,.7);
   color:#334155;
 }
 
 /* Exam */
-.examTop{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-start;
-  gap:16px;
+#examCard ~ .card:first-of-type {
+  display: none;
 }
-.timerBox{min-width:220px}
-.timer{
-  border:1px solid rgba(226,232,240,.95);
-  background:rgba(255,255,255,.72);
-  border-radius:18px;
-  padding:12px 14px;
-}
-.timer__label{color:#64748b;font-weight:800}
-.timer__value{font-size:1.9rem;font-weight:900}
-.timer.is-warn{box-shadow:0 0 0 4px rgba(245,158,11,.18)}
-.timer.is-danger{box-shadow:0 0 0 4px rgba(239,68,68,.18)}
 
-.timeHint{
-  margin-top:6px;
-  font-size:.9rem;
-  color:#475569;
+.questionBox{
+  padding: 12px 20px 18px;
+}
+.qText{
+  font-size:22px;
   font-weight:700;
+  line-height:1.3;
+  padding: 8px 0 12px;
+  color:#334155;
 }
-.timeHint.is-danger{color:#b91c1c}
-
-.questionHost{margin-top:14px}
-.question{
-  border:1px solid rgba(226,232,240,.95);
-  background:rgba(255,255,255,.78);
-  border-radius:18px;
-  padding:18px;
+.answerBox{
+  width:100%;
+  min-height: 140px;
+  border-radius: 18px;
+  margin-bottom: 22px;  /* ← este es el aire que necesita el botón */
+  border:1px solid var(--line);
+  background:#f9fbff;
+  padding: 14px;
+  outline:none;
+  font-size:15px;
+  resize: vertical;
 }
-.question__text{
-  font-size:1.15rem;
-  font-weight:900;
-  margin-bottom:10px;
-  color:#0f172a;
+.answerBox:focus{
+  border-color: rgba(79,70,229,.55);
+  box-shadow: 0 0 0 4px rgba(79,70,229,.10);
+  background:#fff;
 }
-
-.examActions{
-  display:flex;
-  justify-content:space-between;
-  gap:12px;
-  margin-top:16px;
-}
-.examActions--center{justify-content:center}
 
 /* Modal */
-.modal{position:fixed; inset:0; display:grid; place-items:center; z-index:50}
-.modal__backdrop{position:absolute; inset:0; background:rgba(2,6,23,.55)}
-.modal__panel{
-  position:relative;
-  width:min(520px, 92vw);
-  background:rgba(255,255,255,.95);
-  border:1px solid rgba(226,232,240,.9);
-  border-radius:18px;
-  padding:18px 18px 16px;
-  box-shadow:0 30px 70px rgba(15,23,42,.25);
+.modal{
+  position:fixed;
+  inset:0;
+  display:grid;
+  place-items:center;
+  z-index:9999;
 }
-.modal__list{margin:8px 0 14px; color:#334155; font-weight:650}
-.modal__actions{display:flex; justify-content:flex-end; gap:10px}
+.modal-backdrop{
+  position:absolute;
+  inset:0;
+  background: rgba(15,23,42,.35);
+  backdrop-filter: blur(6px);
+}
+.modal-card{
+  position:relative;
+  width:min(920px, 92vw);
+  background:#fff;
+  border-radius: 26px;
+  border:1px solid rgba(219,230,255,.9);
+  box-shadow: var(--shadow);
+  padding: 18px 18px 14px;
+}
+.modal-x{
+  position:absolute;
+  right:12px;
+  top:12px;
+  width:44px;
+  height:44px;
+  border-radius: 14px;
+  border:1px solid var(--line);
+  background:#fff;
+  cursor:pointer;
+  font-size:22px;
+  line-height:1;
+}
+.modal-card h3{
+  margin:2px 0 10px;
+  font-size:26px;
+}
+.modal-text{
+  margin:0 0 10px;
+  color:#334155;
+  font-size:18px;
+  line-height:1.45;
+}
+.modal-list{
+  margin: 10px 0 14px 18px;
+  color:#334155;
+  font-size:18px;
+  line-height:1.45;
+}
+.modal-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  padding-top: 4px;
+}
 
 /* Responsive */
-@media (max-width: 920px){
-  .grid{grid-template-columns: repeat(2, 1fr)}
-  .title{font-size:2.2rem}
-}
-@media (max-width: 560px){
-  .grid{grid-template-columns: 1fr}
-  .title{font-size:2rem}
-}
-@media (max-width: 420px){
-  .logo-badge{ width: 50px; height: 50px; border-radius: 16px; }
-  .brand-logo{ width: 38px; height: 38px; }
-  .brand-text{ height: 24px; max-width: 240px; }
-  .brand-subtitle{ font-size: .98rem; }
+@media (min-width: 980px){
+  .field-wide{ grid-column: span 1; }
+  .formgrid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
-#formError, #serviceInfo{
-  min-height:0; /* no reserva cuando está hidden */
+@media (max-width: 980px){
+  .formgrid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .qText{ font-size:20px; }
+  .answerBox{ min-height: 140px; }
 }
 
-/* =========================
-   FIX UI: controles fijos + 100% zoom OK
-   (Pegar al FINAL del styles.css)
-   ========================= */
+@media (max-width: 640px){
+  .wrap{ width: 94vw; margin: 14px auto 22px; }
+  .topbar-inner{ padding: 14px; }
+  .logo-badge{ width:58px; height:58px; }
 
-:root{
-  --control-h: 56px;      /* altura fija para inputs/select/file */
-  --control-pad-x: 16px;
-}
+  /* ✅ en móvil el logo txt no debe ser gigante */
+  .brand-text{ height:34px !important; }
 
-/* 1) Nunca cambian de tamaño los campos */
-.input,
-select.input{
-  height: var(--control-h);
-  min-height: var(--control-h);
-  max-height: var(--control-h);
-  padding: 0 var(--control-pad-x);
-  line-height: 1.15;
-}
+  /* ✅ en móvil puede volver a columna para que no se apriete */
+  .brandcopy{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:4px;
+  }
+  .brand-subtitle{
+    justify-content:flex-start;
+  }
 
-/* icono dentro del input no debe “estirar” nada */
-.inputWrap .input{
-  padding-right: 44px; /* deja espacio para el icono */
-}
+  .card-head h1, .card-head h2{ font-size:24px; }
+  .formgrid{ grid-template-columns: 1fr; }
+  .timerBox{ min-width: 160px; }
+  .qText{ font-size:18px; }
+  .answerBox{ min-height: 120px; }
 
-/* File picker: SIEMPRE misma altura aunque el nombre sea largo */
-.filePicker{
-  height: var(--control-h);
-  min-height: var(--control-h);
-  max-height: var(--control-h);
+  .cv-field {
+    grid-column: span 1;
+  }
 
-  display: flex;
-  align-items: center;
+  .form-error {
+    margin-left: 0;
+    margin-top: 8px;
+  }
 
-  padding: 0 var(--control-pad-x);
-  line-height: 1.15;
-
-  /* evita que el texto rompa y cambie la altura */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* 2) Que se vea bien al 100% (sin forzar zoom 75%) */
-.wrap{
-  margin: 22px auto 56px; /* un poco menos aire arriba */
-}
-
-.card{
-  padding: 24px; /* baja un toque para que todo entre mejor */
-}
-
-/* Título responsive en desktop (no gigante) */
-.title{
-  font-size: clamp(2.2rem, 3.2vw, 3rem);
-}
-
-/* Grid: mantiene columnas estables y evita “brincos” */
-.grid{
-  align-items: start;
-}
-
-/* Ayuda: que los labels y ayudas no te cambien alturas raras */
-.field label{
-  min-height: 22px;
-}
-
-/* En pantallas grandes, evita “gigantismo” del topbar */
-.topbar{
-  margin: 18px auto 12px;
-}
-
-/* (Opcional) botón principal consistente */
-.btn.primary{
-  height: 54px;
-}
-
-/* =========================
-   FIX UI: controles fijos + 100% zoom OK
-   (Pegar al FINAL del styles.css)
-   ========================= */
-
-:root{
-  --control-h: 56px;      /* altura fija para inputs/select/file */
-  --control-pad-x: 16px;
-}
-
-/* 1) Nunca cambian de tamaño los campos */
-.input,
-select.input{
-  height: var(--control-h);
-  min-height: var(--control-h);
-  max-height: var(--control-h);
-  padding: 0 var(--control-pad-x);
-  line-height: 1.15;
-}
-
-/* icono dentro del input no debe “estirar” nada */
-.inputWrap .input{
-  padding-right: 44px; /* deja espacio para el icono */
-}
-
-/* File picker: SIEMPRE misma altura aunque el nombre sea largo */
-.filePicker{
-  height: var(--control-h);
-  min-height: var(--control-h);
-  max-height: var(--control-h);
-
-  display: flex;
-  align-items: center;
-
-  padding: 0 var(--control-pad-x);
-  line-height: 1.15;
-
-  /* evita que el texto rompa y cambie la altura */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* 2) Que se vea bien al 100% (sin forzar zoom 75%) */
-.wrap{
-  margin: 22px auto 56px; /* un poco menos aire arriba */
-}
-
-.card{
-  padding: 24px; /* baja un toque para que todo entre mejor */
-}
-
-/* Título responsive en desktop (no gigante) */
-.title{
-  font-size: clamp(2.2rem, 3.2vw, 3rem);
-}
-
-/* Grid: mantiene columnas estables y evita “brincos” */
-.grid{
-  align-items: start;
-}
-
-/* Ayuda: que los labels y ayudas no te cambien alturas raras */
-.field label{
-  min-height: 22px;
-}
-
-/* En pantallas grandes, evita “gigantismo” del topbar */
-.topbar{
-  margin: 18px auto 12px;
-}
-
-/* (Opcional) botón principal consistente */
-.btn.primary{
-  height: 54px;
+  .actions {
+    justify-content: center;
+  }
 }
