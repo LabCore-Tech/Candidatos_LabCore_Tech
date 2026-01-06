@@ -97,18 +97,36 @@
           <input id="university" class="input" type="text" placeholder="Escribe tu universidad" />
         </div>
 
-        <div class="field">
-          <label for="career">Carrera <span class="req">*</span></label>
-          <input id="career" class="input" list="careerList" placeholder="Selecciona... o escribe" />
-          <datalist id="careerList"></datalist>
-        </div>
-
-        <div class="field">
-          <label for="semester">Semestre <span class="req">*</span></label>
-          <input id="semester" class="input" list="semesterList" placeholder="Selecciona... o escribe" />
-          <datalist id="semesterList"></datalist>
-        </div>
-
+    		<div class="field">
+    		  <label for="career">Carrera</label>
+    
+    		  <input id="career" name="career" list="careerList"
+    				 placeholder="Selecciona... o escribe"
+    				 autocomplete="off" required />
+    
+    		  <datalist id="careerList">
+    			<option value="Ingeniería de Sistemas"></option>
+    			<option value="Tecnología en Sistemas"></option>
+    			<option value="Desarrollo de Software"></option>
+    			<option value="Ingeniería de Software"></option>
+    			</datalist>
+    		</div>
+    
+    		<div class="field">
+    		  <label for="semester">Semestre</label>
+    
+    		  <input id="semester" name="semester" list="semesterList"
+    				 placeholder="Selecciona... o escribe"
+    				 inputmode="numeric"
+    				 autocomplete="off" required />
+    
+    		  <datalist id="semesterList">
+    			<option value="1"></option><option value="2"></option><option value="3"></option><option value="4"></option><option value="5"></option>
+    			<option value="6"></option><option value="7"></option><option value="8"></option><option value="9"></option><option value="10"></option>
+    			<option value="Graduado"></option><option value="Suspendido"></option><option value="Terminado"></option>
+    		  </datalist>
+    		</div>
+    
         <div class="field field--full">
           <label class="check">
             <input id="acceptPolicy" type="checkbox" />
@@ -196,4 +214,5 @@
   <script src="src/js/fant.js"></script>
   <script src="src/js/app.js"></script>
 </body>
+
 </html>
