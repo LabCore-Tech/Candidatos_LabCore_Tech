@@ -5,6 +5,7 @@
    - Acciones específicas por pregunta
    - Screenshot detection mejorado
    - Metrics avanzadas
+   - [NUEVO] Mejoras para celular: bloqueo de selección y pegado
 */
 
 // 🔐 API KEY pública para evaluación
@@ -104,6 +105,10 @@ window.PUBLIC_EVAL_API_KEY =
       contextMenuAttempts: 0,
       devToolsAttempts: 0,
       
+      // [NUEVO] Para celular
+      totalSelectAttempts: 0, // Intentos de seleccionar texto
+      mobilePasteDetections: 0, // Pegados detectados en móvil
+      
       // Estado actual
       currentQuestionId: null,
       questionStartTime: null,
@@ -173,6 +178,146 @@ window.PUBLIC_EVAL_API_KEY =
   }
 
   // =============================
+  // [NUEVO] BLOQUEO PARA CELULAR - SOLO ESTAS FUNCIONES
+  // =============================
+
+  // 1. BLOQUEAR SELECCIÓN DE TEXTO (evita ayuda de IA en móvil)
+  function setupMobileTextSelectionBlock() {
+    if (!state.examStarted) return;
+    
+    // CSS para bloquear selección en TODO excepto textarea
+    const style = document.createElement('style');
+    style.id = 'block-text-selection';
+    style.textContent = `
+      .no-text-selection * {
+        -webkit-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+        user-select: none !important;
+      }
+      .no-text-selection textarea,
+      .no-text-selection input[type="text"],
+      .no-text-selection input[type="search"] {
+        -webkit-user-select: text !important;
+        -moz-user-select: text !important;
+        -ms-user-select: text !important;
+        user-select: text !important;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    // Aplicar clase al body
+    document.body.classList.add('no-text-selection');
+    
+    // Evento para detectar intentos de selección
+    document.addEventListener('selectstart', function(e) {
+      if (!state.examStarted) return;
+      
+      // Solo contar si no es en un textarea/input
+      const isTextInput = e.target.tagName === 'TEXTAREA' || 
+                         (e.target.tagName === 'INPUT' && 
+                          (e.target.type === 'text' || e.target.type === 'search'));
+      
+      if (!isTextInput) {
+        state.antifraud.totalSelectAttempts++;
+        
+        // Registrar por pregunta
+        if (state.antifraud.currentQuestionId) {
+          if (!state.antifraud.questionsDetail[state.antifraud.currentQuestionId]) {
+            state.antifraud.questionsDetail[state.antifraud.currentQuestionId] = {
+              copy: 0,
+              paste: 0,
+              cut: 0,
+              tabChanges: 0,
+              selectAttempts: 0,
+              mobilePasteDetections: 0
+            };
+          }
+          state.antifraud.questionsDetail[state.antifraud.currentQuestionId].selectAttempts = 
+            (state.antifraud.questionsDetail[state.antifraud.currentQuestionId].selectAttempts || 0) + 1;
+        }
+        
+        state.antifraud.flags.push(`select_attempt_${Date.now()}`);
+      }
+    }, true);
+  }
+
+  // 2. DETECTAR PEGADO EN MÓVIL (escritura muy rápida)
+  let lastTextLength = 0;
+  let lastInputTime = Date.now();
+
+  function setupMobilePasteDetection(textarea) {
+    if (!textarea || !state.examStarted) return;
+    
+    lastTextLength = textarea.value.length;
+    lastInputTime = Date.now();
+    
+    textarea.addEventListener('input', function(e) {
+      if (!state.examStarted) return;
+      
+      const now = Date.now();
+      const currentLength = textarea.value.length;
+      const lengthDiff = currentLength - lastTextLength;
+      const timeDiff = now - lastInputTime;
+      
+      // 🔴 DETECTAR ESCRITURA ANORMALMENTE RÁPIDA (>20 chars en <1s)
+      if (lengthDiff > 20 && timeDiff < 1000) {
+        state.antifraud.mobilePasteDetections++;
+        
+        // Registrar por pregunta
+        if (state.antifraud.currentQuestionId) {
+          if (!state.antifraud.questionsDetail[state.antifraud.currentQuestionId]) {
+            state.antifraud.questionsDetail[state.antifraud.currentQuestionId] = {
+              copy: 0,
+              paste: 0,
+              cut: 0,
+              tabChanges: 0,
+              selectAttempts: 0,
+              mobilePasteDetections: 0
+            };
+          }
+          state.antifraud.questionsDetail[state.antifraud.currentQuestionId].mobilePasteDetections = 
+            (state.antifraud.questionsDetail[state.antifraud.currentQuestionId].mobilePasteDetections || 0) + 1;
+        }
+        
+        state.antifraud.flags.push(`mobile_paste_detected_${now}_${lengthDiff}chars`);
+      }
+      
+      lastTextLength = currentLength;
+      lastInputTime = now;
+    });
+  }
+
+  // 3. BLOQUEAR MENÚ CONTEXTUAL MEJORADO (para móvil también)
+  function setupEnhancedContextMenuBlock() {
+    document.addEventListener('contextmenu', function(e) {
+      if (!state.examStarted) return;
+      
+      e.preventDefault();
+      state.antifraud.contextMenuAttempts++;
+      
+      // Registrar por pregunta
+      if (state.antifraud.currentQuestionId) {
+        if (!state.antifraud.questionsDetail[state.antifraud.currentQuestionId]) {
+          state.antifraud.questionsDetail[state.antifraud.currentQuestionId] = {
+            copy: 0,
+            paste: 0,
+            cut: 0,
+            tabChanges: 0,
+            selectAttempts: 0,
+            mobilePasteDetections: 0,
+            contextMenuAttempts: 0
+          };
+        }
+        state.antifraud.questionsDetail[state.antifraud.currentQuestionId].contextMenuAttempts = 
+          (state.antifraud.questionsDetail[state.antifraud.currentQuestionId].contextMenuAttempts || 0) + 1;
+      }
+      
+      state.antifraud.flags.push(`context_menu_mobile_${Date.now()}`);
+    }, true);
+  }
+
+  // =============================
   // ANTIFRAUDE: Sistema de Tiempos por Pregunta
   // =============================
   function startQuestionTracking(questionId) {
@@ -208,7 +353,9 @@ window.PUBLIC_EVAL_API_KEY =
           cut: 0,
           tabChanges: 0,
           screenshotAttempts: 0,
-          contextMenuAttempts: 0
+          contextMenuAttempts: 0,
+          selectAttempts: 0,
+          mobilePasteDetections: 0
         },
         flags: [],
         metrics: {
@@ -519,6 +666,7 @@ window.PUBLIC_EVAL_API_KEY =
       totalQuestionsTime += qData.times.totalDuration || 0;
       totalOutOfFocusTime += qData.times.outOfFocusDuration || 0;
       
+      // [ACTUALIZADO] Incluir nuevas métricas para celular
       questionsSummary[qId] = {
         total_duration: qData.times.totalDuration,
         focused_duration: qData.times.focusedDuration,
@@ -530,6 +678,9 @@ window.PUBLIC_EVAL_API_KEY =
         tab_changes: qData.actions.tabChanges,
         screenshot_attempts: qData.actions.screenshotAttempts,
         context_menu_attempts: qData.actions.contextMenuAttempts,
+        // [NUEVO] Métricas para celular
+        select_attempts: qData.actions.selectAttempts || 0,
+        mobile_paste_detections: qData.actions.mobilePasteDetections || 0,
         flags: qData.flags
       };
     });
@@ -570,6 +721,20 @@ window.PUBLIC_EVAL_API_KEY =
       }
     }
     
+    // [NUEVO] FLAG: Muchos intentos de selección (posible uso de IA en móvil)
+    if (state.antifraud.totalSelectAttempts > 5) {
+      if (!state.antifraud.flags.includes('excessive_selection_attempts')) {
+        state.antifraud.flags.push('excessive_selection_attempts');
+      }
+    }
+    
+    // [NUEVO] FLAG: Pegados detectados en móvil
+    if (state.antifraud.mobilePasteDetections > 0) {
+      if (!state.antifraud.flags.includes('mobile_paste_detected')) {
+        state.antifraud.flags.push(`mobile_paste_detected_${state.antifraud.mobilePasteDetections}_times`);
+      }
+    }
+    
     return {
       // Información básica
       basics: {
@@ -578,7 +743,10 @@ window.PUBLIC_EVAL_API_KEY =
         timed_out: state.timedOut,
         remaining_seconds: state.remaining,
         total_questions: state.questions.length,
-        exam_duration_seconds: totalExamTime
+        exam_duration_seconds: totalExamTime,
+        // [NUEVO] Métricas para celular
+        mobile_selection_attempts: state.antifraud.totalSelectAttempts,
+        mobile_paste_detections: state.antifraud.mobilePasteDetections
       },
       
       // Información del navegador
@@ -604,7 +772,10 @@ window.PUBLIC_EVAL_API_KEY =
         screenshot_attempts: state.antifraud.screenshotAttempts,
         context_menu_attempts: state.antifraud.contextMenuAttempts,
         dev_tools_attempts: state.antifraud.devToolsAttempts,
-        total_copy_paste_actions: totalCopyPaste
+        total_copy_paste_actions: totalCopyPaste,
+        // [NUEVO] Acciones para celular
+        total_select_attempts: state.antifraud.totalSelectAttempts,
+        mobile_paste_detections: state.antifraud.mobilePasteDetections
       },
       
       // Detalles por pregunta (COMPLETOS)
@@ -621,7 +792,8 @@ window.PUBLIC_EVAL_API_KEY =
         submission_timestamp: new Date().toISOString(),
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         client_timestamp: now,
-        exam_version: '1.0'
+        exam_version: '1.1', // [ACTUALIZADO] Versión con mejoras para móvil
+        mobile_protection: 'enhanced'
       }
     };
   }
@@ -807,7 +979,7 @@ window.PUBLIC_EVAL_API_KEY =
 
     if (!email?.value.trim()) return false;
     if (!phone?.value.trim()) return false;
-    //if (!github?.value.trim()) return false;
+    if (!github?.value.trim()) return false;
 
     if (!cvFile || cvFile.files.length === 0) return false;
 
@@ -998,6 +1170,9 @@ window.PUBLIC_EVAL_API_KEY =
     const questionId = q.id || `Q${currentIndex + 1}`;
     startQuestionTracking(questionId);
     
+    // [NUEVO] Configurar detección de pegado para celular
+    setupMobilePasteDetection(qAnswerEl2);
+    
     // Prevenir acciones
     qAnswerEl2.onpaste = (e) => { 
       e.preventDefault(); 
@@ -1060,6 +1235,10 @@ window.PUBLIC_EVAL_API_KEY =
     state.antifraud.devToolsAttempts = 0;
     state.antifraud.questionsDetail = {};
     state.antifraud.flags = [];
+    // [NUEVO] Inicializar contadores para celular
+    state.antifraud.totalSelectAttempts = 0;
+    state.antifraud.mobilePasteDetections = 0;
+    
     state.antifraud.patterns = {
       rapidSequenceAnswers: 0,
       copyPastePattern: false,
@@ -1068,6 +1247,10 @@ window.PUBLIC_EVAL_API_KEY =
 
     currentIndex = 0;
     state.examStarted = true;
+
+    // [NUEVO] ACTIVAR BLOQUEO PARA CELULAR
+    setupMobileTextSelectionBlock();
+    setupEnhancedContextMenuBlock();
 
     // 🔴 Detectar DevTools al inicio
     setTimeout(detectDevTools, 1000);
@@ -1192,7 +1375,7 @@ window.PUBLIC_EVAL_API_KEY =
 
           email: email.value.trim(),
           phone: phone.value.trim(),
-          github: (github?.value || "").trim(),
+          github: github.value.trim(),
           linkedin: (linkedin?.value || "").trim(),
 
           university: university.value.trim(),
