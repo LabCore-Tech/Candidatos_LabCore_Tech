@@ -979,7 +979,7 @@ window.PUBLIC_EVAL_API_KEY =
 
     if (!email?.value.trim()) return false;
     if (!phone?.value.trim()) return false;
-    if (!github?.value.trim()) return false;
+    //if (!github?.value.trim()) return false;
 
     if (!cvFile || cvFile.files.length === 0) return false;
 
@@ -1375,7 +1375,7 @@ window.PUBLIC_EVAL_API_KEY =
 
           email: email.value.trim(),
           phone: phone.value.trim(),
-          github: github.value.trim(),
+          github: (github?.value || "").trim(),
           linkedin: (linkedin?.value || "").trim(),
 
           university: university.value.trim(),
