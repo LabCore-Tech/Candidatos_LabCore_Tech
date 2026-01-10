@@ -5,7 +5,6 @@
    - Acciones específicas por pregunta
    - Screenshot detection mejorado
    - Metrics avanzadas
-   - [NUEVO] Mejoras para celular: bloqueo de selección y pegado
 */
 
 // 🔐 API KEY pública para evaluación
@@ -20,6 +19,7 @@ window.PUBLIC_EVAL_API_KEY =
   // Config
   // =============================
   const API_BASE = "https://protrack-49um.onrender.com";
+
   const ENDPOINT_POSITIONS = `${API_BASE}/api/gh/public/positions`;
   const ENDPOINT_EVAL = `${API_BASE}/api/gh/public/eval`;
   const ENDPOINT_SUBMIT = `${API_BASE}/api/gh/public/submit`;
@@ -72,6 +72,11 @@ window.PUBLIC_EVAL_API_KEY =
   const mrMsg = $("mrMsg");
   const btnCloseResult = $("btnCloseResult");
 
+    // ✅ Modal Integridad (ALERTA)
+  const modalIntegrity = $("modalIntegrity");
+  const miwBody = $("miwBody");
+  const btnIntegrityOk = $("btnIntegrityOk");
+
   // =============================
   // State - ANTIFRAUDE COMPLETO MEJORADO
   // =============================
@@ -92,7 +97,8 @@ window.PUBLIC_EVAL_API_KEY =
       endTime: null,
       totalOutOfFocusTime: 0,
       lastFocusLossTime: null,
-      
+      // ✅ Mostrar alerta solo una vez por evaluación
+      integrityWarned: false,
       // Detalles por pregunta
       questionsDetail: {}, // {qId: {times, focusEvents, actions, flags}}
       
@@ -104,10 +110,6 @@ window.PUBLIC_EVAL_API_KEY =
       screenshotAttempts: 0,
       contextMenuAttempts: 0,
       devToolsAttempts: 0,
-      
-      // [NUEVO] Para celular
-      totalSelectAttempts: 0, // Intentos de seleccionar texto
-      mobilePasteDetections: 0, // Pegados detectados en móvil
       
       // Estado actual
       currentQuestionId: null,
@@ -178,146 +180,6 @@ window.PUBLIC_EVAL_API_KEY =
   }
 
   // =============================
-  // [NUEVO] BLOQUEO PARA CELULAR - SOLO ESTAS FUNCIONES
-  // =============================
-
-  // 1. BLOQUEAR SELECCIÓN DE TEXTO (evita ayuda de IA en móvil)
-  function setupMobileTextSelectionBlock() {
-    if (!state.examStarted) return;
-    
-    // CSS para bloquear selección en TODO excepto textarea
-    const style = document.createElement('style');
-    style.id = 'block-text-selection';
-    style.textContent = `
-      .no-text-selection * {
-        -webkit-user-select: none !important;
-        -moz-user-select: none !important;
-        -ms-user-select: none !important;
-        user-select: none !important;
-      }
-      .no-text-selection textarea,
-      .no-text-selection input[type="text"],
-      .no-text-selection input[type="search"] {
-        -webkit-user-select: text !important;
-        -moz-user-select: text !important;
-        -ms-user-select: text !important;
-        user-select: text !important;
-      }
-    `;
-    document.head.appendChild(style);
-    
-    // Aplicar clase al body
-    document.body.classList.add('no-text-selection');
-    
-    // Evento para detectar intentos de selección
-    document.addEventListener('selectstart', function(e) {
-      if (!state.examStarted) return;
-      
-      // Solo contar si no es en un textarea/input
-      const isTextInput = e.target.tagName === 'TEXTAREA' || 
-                         (e.target.tagName === 'INPUT' && 
-                          (e.target.type === 'text' || e.target.type === 'search'));
-      
-      if (!isTextInput) {
-        state.antifraud.totalSelectAttempts++;
-        
-        // Registrar por pregunta
-        if (state.antifraud.currentQuestionId) {
-          if (!state.antifraud.questionsDetail[state.antifraud.currentQuestionId]) {
-            state.antifraud.questionsDetail[state.antifraud.currentQuestionId] = {
-              copy: 0,
-              paste: 0,
-              cut: 0,
-              tabChanges: 0,
-              selectAttempts: 0,
-              mobilePasteDetections: 0
-            };
-          }
-          state.antifraud.questionsDetail[state.antifraud.currentQuestionId].selectAttempts = 
-            (state.antifraud.questionsDetail[state.antifraud.currentQuestionId].selectAttempts || 0) + 1;
-        }
-        
-        state.antifraud.flags.push(`select_attempt_${Date.now()}`);
-      }
-    }, true);
-  }
-
-  // 2. DETECTAR PEGADO EN MÓVIL (escritura muy rápida)
-  let lastTextLength = 0;
-  let lastInputTime = Date.now();
-
-  function setupMobilePasteDetection(textarea) {
-    if (!textarea || !state.examStarted) return;
-    
-    lastTextLength = textarea.value.length;
-    lastInputTime = Date.now();
-    
-    textarea.addEventListener('input', function(e) {
-      if (!state.examStarted) return;
-      
-      const now = Date.now();
-      const currentLength = textarea.value.length;
-      const lengthDiff = currentLength - lastTextLength;
-      const timeDiff = now - lastInputTime;
-      
-      // 🔴 DETECTAR ESCRITURA ANORMALMENTE RÁPIDA (>20 chars en <1s)
-      if (lengthDiff > 20 && timeDiff < 1000) {
-        state.antifraud.mobilePasteDetections++;
-        
-        // Registrar por pregunta
-        if (state.antifraud.currentQuestionId) {
-          if (!state.antifraud.questionsDetail[state.antifraud.currentQuestionId]) {
-            state.antifraud.questionsDetail[state.antifraud.currentQuestionId] = {
-              copy: 0,
-              paste: 0,
-              cut: 0,
-              tabChanges: 0,
-              selectAttempts: 0,
-              mobilePasteDetections: 0
-            };
-          }
-          state.antifraud.questionsDetail[state.antifraud.currentQuestionId].mobilePasteDetections = 
-            (state.antifraud.questionsDetail[state.antifraud.currentQuestionId].mobilePasteDetections || 0) + 1;
-        }
-        
-        state.antifraud.flags.push(`mobile_paste_detected_${now}_${lengthDiff}chars`);
-      }
-      
-      lastTextLength = currentLength;
-      lastInputTime = now;
-    });
-  }
-
-  // 3. BLOQUEAR MENÚ CONTEXTUAL MEJORADO (para móvil también)
-  function setupEnhancedContextMenuBlock() {
-    document.addEventListener('contextmenu', function(e) {
-      if (!state.examStarted) return;
-      
-      e.preventDefault();
-      state.antifraud.contextMenuAttempts++;
-      
-      // Registrar por pregunta
-      if (state.antifraud.currentQuestionId) {
-        if (!state.antifraud.questionsDetail[state.antifraud.currentQuestionId]) {
-          state.antifraud.questionsDetail[state.antifraud.currentQuestionId] = {
-            copy: 0,
-            paste: 0,
-            cut: 0,
-            tabChanges: 0,
-            selectAttempts: 0,
-            mobilePasteDetections: 0,
-            contextMenuAttempts: 0
-          };
-        }
-        state.antifraud.questionsDetail[state.antifraud.currentQuestionId].contextMenuAttempts = 
-          (state.antifraud.questionsDetail[state.antifraud.currentQuestionId].contextMenuAttempts || 0) + 1;
-      }
-      
-      state.antifraud.flags.push(`context_menu_mobile_${Date.now()}`);
-    }, true);
-  }
-
-  // =============================
   // ANTIFRAUDE: Sistema de Tiempos por Pregunta
   // =============================
   function startQuestionTracking(questionId) {
@@ -353,9 +215,7 @@ window.PUBLIC_EVAL_API_KEY =
           cut: 0,
           tabChanges: 0,
           screenshotAttempts: 0,
-          contextMenuAttempts: 0,
-          selectAttempts: 0,
-          mobilePasteDetections: 0
+          contextMenuAttempts: 0
         },
         flags: [],
         metrics: {
@@ -428,6 +288,8 @@ window.PUBLIC_EVAL_API_KEY =
   // =============================
   function handleFocusLoss() {
     if (!state.examStarted || !state.antifraud.currentQuestionId) return;
+        showIntegrityAlertOnce();
+
     
     const now = getTimestamp();
     state.antifraud.lastFocusLossTime = now;
@@ -516,6 +378,7 @@ window.PUBLIC_EVAL_API_KEY =
   // =============================
   function registerCopyAction() {
     if (!state.examStarted || !state.antifraud.currentQuestionId) return;
+    showIntegrityAlertOnce();
     
     state.antifraud.totalCopyActions++;
     
@@ -601,7 +464,8 @@ window.PUBLIC_EVAL_API_KEY =
 
   function registerContextMenuAttempt() {
     if (!state.examStarted || !state.antifraud.currentQuestionId) return;
-    
+    showIntegrityAlertOnce();
+
     state.antifraud.contextMenuAttempts++;
     
     const questionId = state.antifraud.currentQuestionId;
@@ -666,7 +530,6 @@ window.PUBLIC_EVAL_API_KEY =
       totalQuestionsTime += qData.times.totalDuration || 0;
       totalOutOfFocusTime += qData.times.outOfFocusDuration || 0;
       
-      // [ACTUALIZADO] Incluir nuevas métricas para celular
       questionsSummary[qId] = {
         total_duration: qData.times.totalDuration,
         focused_duration: qData.times.focusedDuration,
@@ -678,9 +541,6 @@ window.PUBLIC_EVAL_API_KEY =
         tab_changes: qData.actions.tabChanges,
         screenshot_attempts: qData.actions.screenshotAttempts,
         context_menu_attempts: qData.actions.contextMenuAttempts,
-        // [NUEVO] Métricas para celular
-        select_attempts: qData.actions.selectAttempts || 0,
-        mobile_paste_detections: qData.actions.mobilePasteDetections || 0,
         flags: qData.flags
       };
     });
@@ -721,20 +581,6 @@ window.PUBLIC_EVAL_API_KEY =
       }
     }
     
-    // [NUEVO] FLAG: Muchos intentos de selección (posible uso de IA en móvil)
-    if (state.antifraud.totalSelectAttempts > 5) {
-      if (!state.antifraud.flags.includes('excessive_selection_attempts')) {
-        state.antifraud.flags.push('excessive_selection_attempts');
-      }
-    }
-    
-    // [NUEVO] FLAG: Pegados detectados en móvil
-    if (state.antifraud.mobilePasteDetections > 0) {
-      if (!state.antifraud.flags.includes('mobile_paste_detected')) {
-        state.antifraud.flags.push(`mobile_paste_detected_${state.antifraud.mobilePasteDetections}_times`);
-      }
-    }
-    
     return {
       // Información básica
       basics: {
@@ -743,10 +589,7 @@ window.PUBLIC_EVAL_API_KEY =
         timed_out: state.timedOut,
         remaining_seconds: state.remaining,
         total_questions: state.questions.length,
-        exam_duration_seconds: totalExamTime,
-        // [NUEVO] Métricas para celular
-        mobile_selection_attempts: state.antifraud.totalSelectAttempts,
-        mobile_paste_detections: state.antifraud.mobilePasteDetections
+        exam_duration_seconds: totalExamTime
       },
       
       // Información del navegador
@@ -772,10 +615,7 @@ window.PUBLIC_EVAL_API_KEY =
         screenshot_attempts: state.antifraud.screenshotAttempts,
         context_menu_attempts: state.antifraud.contextMenuAttempts,
         dev_tools_attempts: state.antifraud.devToolsAttempts,
-        total_copy_paste_actions: totalCopyPaste,
-        // [NUEVO] Acciones para celular
-        total_select_attempts: state.antifraud.totalSelectAttempts,
-        mobile_paste_detections: state.antifraud.mobilePasteDetections
+        total_copy_paste_actions: totalCopyPaste
       },
       
       // Detalles por pregunta (COMPLETOS)
@@ -792,8 +632,7 @@ window.PUBLIC_EVAL_API_KEY =
         submission_timestamp: new Date().toISOString(),
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         client_timestamp: now,
-        exam_version: '1.1', // [ACTUALIZADO] Versión con mejoras para móvil
-        mobile_protection: 'enhanced'
+        exam_version: '1.0'
       }
     };
   }
@@ -857,6 +696,73 @@ window.PUBLIC_EVAL_API_KEY =
   // Normalización evaluación
   // =============================
   function normalizeEvalResponse(data) {
+    // ✅ V2: { ok:true, data: { eval: { questions:[...], duration_minutes } } }
+    if (data?.ok === true && data?.data?.eval && Array.isArray(data.data.eval.questions)) {
+      return {
+        ok: true,
+        questions: data.data.eval.questions,
+        duration_minutes: Number(data.data.eval.duration_minutes || 10),
+        raw: data,
+      };
+    }
+
+    // ✅ V2 alterno: { ok:true, data: { questions:[...] } }
+    if (data?.ok === true && data?.data && Array.isArray(data.data.questions)) {
+      return {
+        ok: true,
+        questions: data.data.questions,
+        duration_minutes: Number(data.data.duration_minutes || 10),
+        raw: data,
+      };
+    }
+
+    // V1 compat
+    if (data?.ok === true && Array.isArray(data.questions)) {
+      return {
+        ok: true,
+        questions: data.questions,
+        duration_minutes: Number(data.duration_minutes || 10),
+        raw: data,
+      };
+    }
+
+    if (data?.eval && Array.isArray(data.eval.questions)) {
+      return {
+        ok: true,
+        questions: data.eval.questions,
+        duration_minutes: Number(data.eval.duration_minutes || 10),
+        raw: data,
+      };
+    }
+
+    if (data?.ok === true && Array.isArray(data.modules)) {
+      const flat = [];
+      for (const m of data.modules) {
+        const moduleId = String(m?.id || m?.moduleId || m?.code || "").trim();
+        const moduleName = String(m?.name || m?.moduleName || "").trim();
+        const qs = Array.isArray(m?.questions) ? m.questions : [];
+        for (const q of qs) {
+          flat.push({
+            id: q?.id || q?.qid || "",
+            moduleId,
+            moduleName,
+            prompt: q?.text || q?.prompt || q?.question || "",
+          });
+        }
+      }
+      return {
+        ok: true,
+        questions: flat,
+        duration_minutes: Number(data.duration_minutes || 10),
+        raw: data,
+      };
+    }
+
+    return { ok: false, questions: [], duration_minutes: 10, raw: data };
+  }
+
+  function normalizeEvalResponse(data) {
+    
     if (data?.ok === true && Array.isArray(data.questions)) {
       return {
         ok: true,
@@ -1170,9 +1076,6 @@ window.PUBLIC_EVAL_API_KEY =
     const questionId = q.id || `Q${currentIndex + 1}`;
     startQuestionTracking(questionId);
     
-    // [NUEVO] Configurar detección de pegado para celular
-    setupMobilePasteDetection(qAnswerEl2);
-    
     // Prevenir acciones
     qAnswerEl2.onpaste = (e) => { 
       e.preventDefault(); 
@@ -1235,10 +1138,6 @@ window.PUBLIC_EVAL_API_KEY =
     state.antifraud.devToolsAttempts = 0;
     state.antifraud.questionsDetail = {};
     state.antifraud.flags = [];
-    // [NUEVO] Inicializar contadores para celular
-    state.antifraud.totalSelectAttempts = 0;
-    state.antifraud.mobilePasteDetections = 0;
-    
     state.antifraud.patterns = {
       rapidSequenceAnswers: 0,
       copyPastePattern: false,
@@ -1247,10 +1146,6 @@ window.PUBLIC_EVAL_API_KEY =
 
     currentIndex = 0;
     state.examStarted = true;
-
-    // [NUEVO] ACTIVAR BLOQUEO PARA CELULAR
-    setupMobileTextSelectionBlock();
-    setupEnhancedContextMenuBlock();
 
     // 🔴 Detectar DevTools al inicio
     setTimeout(detectDevTools, 1000);
@@ -1265,6 +1160,41 @@ window.PUBLIC_EVAL_API_KEY =
   // =============================
   // Modal Functions
   // =============================
+
+  // 🔔 Modal de integridad
+    function openModalIntegrity(customMsg = "") {
+      if (!modalIntegrity) return;
+      if (miwBody && customMsg) {
+        miwBody.textContent = customMsg;
+      }
+      modalIntegrity.classList.remove("hidden", "is-hidden");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeModalIntegrity() {
+      if (!modalIntegrity) return;
+      modalIntegrity.classList.add("hidden");
+      document.body.style.overflow = "";
+    }
+
+    // ⚠️ Mostrar alerta de integridad SOLO UNA VEZ
+    function showIntegrityAlertOnce() {
+      if (!state.examStarted) return;
+      if (state.antifraud.integrityWarned) return;
+
+      state.antifraud.integrityWarned = true;
+
+      const INTEGRITY_MESSAGE =
+        "Atención\n\n" +
+        "Esta evaluación cuenta con control de integridad.\n\n" +
+        "Responde con tu propio criterio y mantén el foco en la prueba. " +
+        "El sistema realiza seguimiento continuo durante todo el proceso.\n\n" +
+        "La evaluación está diseñada para resolverse en aproximadamente 10 minutos. " +
+        "Concéntrate y continúa.";
+
+      openModalIntegrity(INTEGRITY_MESSAGE);
+    }
+    
   function openModalInfo() {
     if (!modalInfo) return;
     modalInfo.classList.remove("hidden", "is-hidden");
@@ -1293,7 +1223,7 @@ window.PUBLIC_EVAL_API_KEY =
         } else {
           icon.classList.remove('modal__icon--warning');
           icon.innerHTML = `
-            <svg xmlns="http://www.w3.org2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
               <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd" />
             </svg>
           `;
@@ -1364,11 +1294,10 @@ window.PUBLIC_EVAL_API_KEY =
       const antifraudData = prepareAntifraudData();
 
       const payload = {
-        candidate: {
-          positionId: pid,
-          roleId: pid,
-          role: pid,
+        position_id: pid,
 
+        candidate: {
+          // datos principales
           first_name: firstName.value.trim(),
           last_name: lastName.value.trim(),
           cedula: cedula.value.trim(),
@@ -1382,21 +1311,31 @@ window.PUBLIC_EVAL_API_KEY =
           career: career.value.trim(),
           semester: semester.value.trim(),
         },
-        meta: antifraudData.basics,
-        questions: state.questions.map((q, i) => ({
-          id: q.id || q.qid || `Q${i + 1}`,
-          moduleId: q.moduleId || q.module || "",
-          moduleName: q.moduleName || "",
+
+        // V2 usa "answers" (no "questions")
+        answers: state.questions.map((q, i) => ({
+          question_id: q.id || q.qid || `Q${i + 1}`,
+          module_id: q.moduleId || q.module || "",
+          module_name: q.moduleName || "",
           prompt: q.prompt || q.text || q.question || "",
           answer: normalizeText(state.answers[i] || ""),
         })),
+
+        // meta: aquí metemos antifraude completo + básicos
+        meta: {
+          ...antifraudData.basics,
+          antifraud: antifraudData,
+          source: "github_pages",
+          schema: "v2",
+        },
+
+        // V2 espera filename/base64 (sin mime)
         cv: {
-          name: file.name || "cv.pdf",
-          mime: file.type || "application/pdf",
+          filename: file.name || "cv.pdf",
           base64: cvB64,
         },
-        antifraud: antifraudData, // 🔴 DATOS COMPLETOS DE ANTIFRAUDE
       };
+
 
       console.log("📊 Datos de antifraude enviados:", antifraudData);
       
@@ -1478,6 +1417,12 @@ window.PUBLIC_EVAL_API_KEY =
     el.addEventListener("click", closeModalInfo);
   });
 
+    // ✅ Cierre modal integridad
+  modalIntegrity?.querySelectorAll('[data-close="1"]').forEach((el) => {
+    el.addEventListener("click", closeModalIntegrity);
+  });
+  btnIntegrityOk?.addEventListener("click", closeModalIntegrity);
+
   modalResult?.querySelectorAll('[data-close="1"]').forEach((el) => {
     el.addEventListener("click", closeModalResult);
   });
@@ -1549,7 +1494,8 @@ window.PUBLIC_EVAL_API_KEY =
   // Detectar intentos de abrir DevTools con F12
   document.addEventListener("keydown", (e) => {
     if (!state.examStarted) return;
-    
+          showIntegrityAlertOnce();
+
     if (e.key === 'F12' || 
         (e.ctrlKey && e.shiftKey && e.key === 'I') ||
         (e.ctrlKey && e.shiftKey && e.key === 'J') ||

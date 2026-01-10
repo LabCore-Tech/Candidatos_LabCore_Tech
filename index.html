@@ -213,6 +213,41 @@
     </div>
   </div>
 
+    <!-- ✅ Modal Integridad (ALERTA) -->
+  <div id="modalIntegrity" class="modal hidden" aria-hidden="true">
+    <div class="modal__backdrop" data-close="1"></div>
+    <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="miwTitle">
+      <div class="modal__header">
+        <h3 id="miwTitle">Atención</h3>
+        <button class="modal__close" type="button" data-close="1" aria-label="Cerrar">
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+
+      <div class="modal__content">
+        <div class="modal__icon modal__icon--warning" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path fill-rule="evenodd"
+              d="M9.401 3.003a3 3 0 0 1 5.198 0l7.5 13a3 3 0 0 1-2.599 4.5H4.5a3 3 0 0 1-2.599-4.5l7.5-13ZM12 8.25a.75.75 0 0 0-.75.75v4.5a.75.75 0 0 0 1.5 0V9a.75.75 0 0 0-.75-.75Zm0 9a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z"
+              clip-rule="evenodd" />
+          </svg>
+        </div>
+
+        <p id="miwBody">
+          Esta evaluación cuenta con <b>control de integridad</b>.<br><br>
+          Responde únicamente con tu propio criterio y mantén la prueba en esta pantalla.<br>
+          Acciones como <b>cambiar de pestaña</b>, <b>copiar</b> o <b>pegar</b> información, o intentar usar <b>herramientas externas</b>
+          quedan registradas y pueden afectar el resultado final.<br><br>
+          La prueba está diseñada para resolverse en aproximadamente <b>10 minutos</b>. Concéntrate y continúa.
+        </p>
+      </div>
+
+      <div class="modal__actions">
+        <button id="btnIntegrityOk" class="btn primary" type="button">Entendido</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal result - Mejorado -->
   <div id="modalResult" class="modal hidden" aria-hidden="true">
     <div class="modal__backdrop" data-close="1"></div>
@@ -227,13 +262,17 @@
       </div>
       
       <div class="modal__content">
-        <div class="modal__icon">
+        <div class="modal__icon modal__icon--warning" aria-hidden="true">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-            <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd" />
+            <path fill-rule="evenodd"
+              d="M9.401 3.003a3 3 0 0 1 5.198 0l7.5 13a3 3 0 0 1-2.599 4.5H4.5a3 3 0 0 1-2.599-4.5l7.5-13ZM12 8.25a.75.75 0 0 0-.75.75v4.5a.75.75 0 0 0 1.5 0V9a.75.75 0 0 0-.75-.75Zm0 9a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z"
+              clip-rule="evenodd" />
           </svg>
         </div>
-        <p id="mrMsg">Evaluación enviada correctamente.</p>
+
+        <p id="miwBody"></p>
       </div>
+
       
       <div class="modal__actions">
         <button id="btnCloseResult" class="btn primary" type="button">Cerrar</button>

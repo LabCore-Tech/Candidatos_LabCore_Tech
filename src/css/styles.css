@@ -626,3 +626,8 @@ select.input{
 #formError, #serviceInfo{
   min-height:0; /* no reserva cuando está hidden */
 }
+
+/* Modal warning icon */
+.modal__icon--warning {
+  color: #ffb020; /* amarillo ámbar */
+}
