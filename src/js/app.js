@@ -20,9 +20,9 @@ window.PUBLIC_EVAL_API_KEY =
   // =============================
   const API_BASE = "https://protrack-49um.onrender.com";
 
-  const ENDPOINT_POSITIONS = `${API_BASE}/api/gh/public/positions`;
-  const ENDPOINT_EVAL = `${API_BASE}/api/gh/public/eval`;
-  const ENDPOINT_SUBMIT = `${API_BASE}/api/gh/public/submit`;
+  const ENDPOINT_POSITIONS = `${API_BASE}/api/public/positions`;
+  const ENDPOINT_EVAL = `${API_BASE}/api/public/eval`;
+  const ENDPOINT_SUBMIT = `${API_BASE}/api/public/submit`;
 
   const REDIRECT_URL = "https://www.google.com";
   
